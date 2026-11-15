@@ -1,7 +1,6 @@
 package com.soh3il.core.scheduler
 
 import android.app.AlarmManager
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
@@ -17,6 +16,7 @@ object AlarmScheduler {
     const val EXTRA_IS_PRE_REMINDER = "extra_is_pre_reminder"
     const val EXTRA_IS_SNOOZE = "extra_is_snooze"
     const val EXTRA_PRE_OFFSET_MINUTES = "extra_pre_offset_minutes"
+    const val EXTRA_SNOOZE_AT = "extra_snooze_at"
 
     /**
      * Negative discriminator so snooze never replaces the main alarm (offset 0)
@@ -26,7 +26,7 @@ object AlarmScheduler {
 
     /**
      * Deterministic composite request code and notification ID generator
-     * to eliminate collisions between main reminders and pre-reminders.
+     * The URI and notification tag disambiguate collisions in this mandated hash.
      */
     fun computeAlarmRequestCode(reminderId: Long, preOffsetMinutes: Int): Int {
         return Objects.hash(reminderId, preOffsetMinutes)
@@ -50,14 +50,17 @@ object AlarmScheduler {
      * Does not replace the next real occurrence.
      */
     fun scheduleSnooze(context: Context, reminderId: Long, snoozeMinutes: Int = 10) {
+        cancelSnooze(context, reminderId)
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
         val triggerAtMillis = System.currentTimeMillis() + (snoozeMinutes * 60 * 1000L)
 
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_ALARM_TRIGGER
+            data = AlarmIdentity.uri(reminderId, SNOOZE_OFFSET, "alarm")
             putExtra(EXTRA_REMINDER_ID, reminderId)
             putExtra(EXTRA_IS_PRE_REMINDER, false)
             putExtra(EXTRA_IS_SNOOZE, true)
+            putExtra(EXTRA_SNOOZE_AT, triggerAtMillis)
             putExtra(EXTRA_PRE_OFFSET_MINUTES, 0)
         }
 
@@ -69,6 +72,7 @@ object AlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        AlarmIdentity.rememberSnooze(context, reminderId, triggerAtMillis)
         scheduleExact(alarmManager, triggerAtMillis, pendingIntent)
     }
 
@@ -91,7 +95,7 @@ object AlarmScheduler {
         } else {
             JalaliRecurrenceEngine.calculateNextTrigger(reminder)
         }
-        cancelAlarms(context, reminder.id, reminder.preReminders.map { it.toMinutes().toInt() })
+        cancelAlarms(context, reminder.id, reminder.preReminders.map { it.toMinutes().toInt() } + 0)
         if (nextTrigger == null) return
 
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
@@ -99,6 +103,7 @@ object AlarmScheduler {
         val mainRequestCode = computeAlarmRequestCode(reminder.id, 0)
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_ALARM_TRIGGER
+            data = AlarmIdentity.uri(reminder.id, 0, "alarm")
             putExtra(EXTRA_REMINDER_ID, reminder.id)
             putExtra(EXTRA_IS_PRE_REMINDER, false)
             putExtra(EXTRA_IS_SNOOZE, false)
@@ -122,6 +127,7 @@ object AlarmScheduler {
                 val preRequestCode = computeAlarmRequestCode(reminder.id, preMinutes)
                 val preIntent = Intent(context, AlarmReceiver::class.java).apply {
                     action = ACTION_ALARM_TRIGGER
+                    data = AlarmIdentity.uri(reminder.id, preMinutes, "alarm")
                     putExtra(EXTRA_REMINDER_ID, reminder.id)
                     putExtra(EXTRA_IS_PRE_REMINDER, true)
                     putExtra(EXTRA_IS_SNOOZE, false)
@@ -170,21 +176,31 @@ object AlarmScheduler {
     }
 
     fun cancelReminder(context: Context, reminderId: Long, preOffsetMinutesList: List<Int> = emptyList()) {
-        cancelAlarms(context, reminderId, preOffsetMinutesList)
+        cancelAlarms(context, reminderId, preOffsetMinutesList + 0)
+        cancelSnooze(context, reminderId)
         for (offset in (preOffsetMinutesList + 0).distinct()) {
             NotificationHelper.cancelReminderNotification(context, reminderId, offset)
         }
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
-        notificationManager?.cancel(computeAlarmRequestCode(reminderId, 0))
-        notificationManager?.cancel(computeAlarmRequestCode(reminderId, SNOOZE_OFFSET))
+    }
+
+    internal fun cancelSnooze(context: Context, reminderId: Long) {
+        if (AlarmIdentity.hasSnooze(context, reminderId, AlarmIdentity.LEGACY_SNOOZE)) {
+            AlarmMigration.legacyPending(context, reminderId, SNOOZE_OFFSET)?.let {
+                (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(it)
+                it.cancel()
+            }
+        }
+        AlarmIdentity.clearSnooze(context, reminderId)
+        cancelAlarms(context, reminderId, listOf(SNOOZE_OFFSET))
     }
 
     private fun cancelAlarms(context: Context, reminderId: Long, preOffsetMinutesList: List<Int>) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
-        val allOffsets = (preOffsetMinutesList + 0 + SNOOZE_OFFSET).distinct()
+        val allOffsets = preOffsetMinutesList.distinct()
         for (offset in allOffsets) {
             val intent = Intent(context, AlarmReceiver::class.java).apply {
                 action = ACTION_ALARM_TRIGGER
+                data = AlarmIdentity.uri(reminderId, offset, "alarm")
                 putExtra(EXTRA_REMINDER_ID, reminderId)
                 putExtra(EXTRA_PRE_OFFSET_MINUTES, offset)
             }
@@ -193,8 +209,8 @@ object AlarmScheduler {
                 context,
                 requestCode,
                 intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
+                PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+            ) ?: continue
             alarmManager.cancel(pendingIntent)
             pendingIntent.cancel()
         }

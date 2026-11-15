@@ -26,7 +26,6 @@ object UpdateChecker {
 
     private const val GITHUB_REPO = "xSOH3ILx/SOH3IL"
     private const val GITHUB_API_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
-    private const val DEFAULT_RELEASE_URL = "https://github.com/$GITHUB_REPO/releases/latest"
 
     private val client = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -55,47 +54,37 @@ object UpdateChecker {
         throw IOException("تغییر مسیر به‌روزرسانی بیش از حد تکرار شد")
     }
 
-    suspend fun checkForUpdates(currentVersionName: String): UpdateInfo = withContext(Dispatchers.IO) {
-        try {
-            if (!UpdateUrlPolicy.isAllowed(GITHUB_API_URL)) {
-                return@withContext noUpdate(currentVersionName)
-            }
+    suspend fun checkForUpdates(currentVersionName: String, executeRequest: (Request) -> okhttp3.Response = ::executeAllowed): UpdateInfo = withContext(Dispatchers.IO) {
+        check(UpdateUrlPolicy.isAllowed(GITHUB_API_URL))
 
-            val request = Request.Builder()
-                .url(GITHUB_API_URL)
-                .header("Accept", "application/vnd.github.v3+json")
-                .build()
+        val request = Request.Builder()
+            .url(GITHUB_API_URL)
+            .header("Accept", "application/vnd.github.v3+json")
+            .build()
 
-            executeAllowed(request).use { response ->
-                if (response.code != 200) return@withContext noUpdate(currentVersionName)
-                val body = response.body?.string() ?: return@withContext noUpdate(currentVersionName)
-                val json = JSONObject(body)
-                val latestVersionName = json.optString("tag_name", "").removePrefix("v")
-                val releaseHtmlUrl = json.optString("html_url", DEFAULT_RELEASE_URL)
-                    .takeIf { UpdateUrlPolicy.isAllowed(it) }
-                    ?: DEFAULT_RELEASE_URL
-                val changelog = json.optString(
-                    "body",
-                    "بهبود پایداری، رفع باگ‌ها و ارتقای رابط کاربری"
-                )
-                UpdateInfo(
-                    hasUpdate = isVersionNewer(latestVersionName, currentVersionName),
-                    latestVersionName = latestVersionName,
-                    changelog = changelog,
-                    releaseHtmlUrl = releaseHtmlUrl
-                )
+        executeRequest(request).use { response ->
+            if (response.code != 200) throw IOException("بررسی نسخه با خطای سرور روبه‌رو شد")
+            val body = response.body?.string() ?: throw IOException("پاسخ بررسی نسخه خالی بود")
+            val json = JSONObject(body)
+            val latestVersionName = json.optString("tag_name", "").removePrefix("v")
+            if (!latestVersionName.matches(Regex("[0-9]+(?:\\.[0-9]+)*")) ||
+                latestVersionName.split('.').any { it.toIntOrNull() == null }) {
+                throw IOException("شماره نسخه در پاسخ معتبر نبود")
             }
-        } catch (_: Exception) {
-            noUpdate(currentVersionName)
+            val releaseHtmlUrl = json.optString("html_url", "")
+            if (!UpdateUrlPolicy.isAllowed(releaseHtmlUrl)) throw IOException("نشانی انتشار معتبر نبود")
+            val changelog = json.optString(
+                "body",
+                "بهبود پایداری، رفع باگ‌ها و ارتقای رابط کاربری"
+            )
+            UpdateInfo(
+                hasUpdate = isVersionNewer(latestVersionName, currentVersionName),
+                latestVersionName = latestVersionName,
+                changelog = changelog,
+                releaseHtmlUrl = releaseHtmlUrl
+            )
         }
     }
-
-    private fun noUpdate(currentVersionName: String) = UpdateInfo(
-        hasUpdate = false,
-        latestVersionName = currentVersionName,
-        changelog = "",
-        releaseHtmlUrl = DEFAULT_RELEASE_URL
-    )
 
     private fun isVersionNewer(latest: String, current: String): Boolean {
         val latestParts = latest.split(".").mapNotNull { it.toIntOrNull() }

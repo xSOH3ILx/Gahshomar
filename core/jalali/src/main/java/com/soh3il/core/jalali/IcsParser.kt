@@ -1,7 +1,6 @@
 package com.soh3il.core.jalali
 
 import com.soh3il.core.model.PreReminder
-import com.soh3il.core.model.PreReminderUnit
 import com.soh3il.core.model.RecurrenceType
 import com.soh3il.core.model.Reminder
 import java.io.InputStream
@@ -13,6 +12,7 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 object IcsParser {
 
@@ -49,6 +49,7 @@ object IcsParser {
             }.getOrDefault(LocalDate.now(JalaliDate.TEHRAN_ZONE))
 
             val dtStart = String.format(
+                Locale.ROOT,
                 "%04d%02d%02dT%02d%02d00",
                 gDate.year, gDate.monthValue, gDate.dayOfMonth,
                 rem.hour, rem.minute
@@ -176,17 +177,7 @@ object IcsParser {
                 if (inAlarm) {
                     if (trimmed.startsWith("TRIGGER:", ignoreCase = true)) {
                         val triggerStr = trimmed.substring(8).trim()
-                        val clean = triggerStr.removePrefix("-").removePrefix("P")
-                        if (clean.endsWith("D", ignoreCase = true)) {
-                            val days = clean.dropLast(1).toIntOrNull() ?: 1
-                            currentPreReminders.add(PreReminder(days, PreReminderUnit.DAYS))
-                        } else if (clean.startsWith("T", ignoreCase = true) && clean.endsWith("H", ignoreCase = true)) {
-                            val hours = clean.drop(1).dropLast(1).toIntOrNull() ?: 1
-                            currentPreReminders.add(PreReminder(hours, PreReminderUnit.HOURS))
-                        } else if (clean.startsWith("T", ignoreCase = true) && clean.endsWith("M", ignoreCase = true)) {
-                            val mins = clean.drop(1).dropLast(1).toIntOrNull() ?: 15
-                            currentPreReminders.add(PreReminder(mins, PreReminderUnit.MINUTES))
-                        }
+                        currentPreReminders.add(IcsAlarmDuration.parse(triggerStr))
                     }
                 } else {
                     when {
@@ -327,11 +318,19 @@ object IcsParser {
     }
 
     fun unescapeIcs(text: String): String {
-        return text
-            .replace("\\n", "\n", ignoreCase = true)
-            .replace("\\;", ";")
-            .replace("\\,", ",")
-            .replace("\\\\", "\\")
+        return buildString {
+            var index = 0
+            while (index < text.length) {
+                val char = text[index++]
+                if (char == '\\' && index < text.length) {
+                    when (val escaped = text[index++]) {
+                        'n', 'N' -> append('\n')
+                        '\\', ';', ',' -> append(escaped)
+                        else -> { append('\\'); append(escaped) }
+                    }
+                } else append(char)
+            }
+        }
     }
 
     fun sanitizeText(text: String): String {

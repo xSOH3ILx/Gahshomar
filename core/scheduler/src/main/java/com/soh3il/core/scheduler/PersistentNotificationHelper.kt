@@ -210,7 +210,11 @@ object PersistentNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val smallIconRes = DateNotificationAssets.getDayDrawableRes(context, today.day)
+        val smallIconRes = if (UserPreferences.isDynamicNotificationIconEnabled(context)) {
+            DateNotificationAssets.getDayDrawableRes(context, today.day)
+        } else {
+            com.soh3il.core.designsystem.R.drawable.ic_stat_calendar
+        }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .addExtras(Bundle().apply { putLong(EXTRA_DATE_JDN, today.toJdn()) })
             .setContentTitle(fullTitle)

@@ -29,6 +29,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,13 +73,21 @@ fun SettingsScreen(
     contactsPermissionGranted: Boolean = false,
     onContactBirthdaysToggled: ((Boolean) -> Unit)? = null,
     onBackClick: (() -> Unit)? = null,
-    onWidgetsClick: (() -> Unit)? = null
+    onWidgetsClick: (() -> Unit)? = null,
+    openDateConverterRequested: Boolean = false,
+    onDateConverterRequestHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
     // Dialog state
-    var showDateConverterDialog by remember { mutableStateOf(false) }
+    var showDateConverterDialog by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(openDateConverterRequested) {
+        if (openDateConverterRequested) {
+            showDateConverterDialog = true
+            onDateConverterRequestHandled()
+        }
+    }
     var showAutoStartDialog by remember { mutableStateOf(false) }
     val deviceGuide = remember { AutoStartHelper.getDeviceGuide() }
 

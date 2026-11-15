@@ -10,6 +10,8 @@ object UserPreferences {
     private const val KEY_AMOLED = "pref_amoled"
     private const val KEY_NOTIFICATION_SOUND_URI = "pref_sound_uri"
     private const val KEY_NOTIFICATION_SOUND_TITLE = "pref_sound_title"
+    private const val KEY_NOTIFICATION_SOUND_SILENT = "pref_sound_silent"
+    private const val KEY_NOTIFICATION_CHANNEL_REVISION = "pref_sound_channel_revision"
     private const val KEY_PERSISTENT_NOTIFICATION = "pref_persistent_notification"
     private const val KEY_LIVE_ICON = "pref_live_icon"
     private const val KEY_LOCKSCREEN_CALENDAR = "pref_lockscreen_calendar"
@@ -54,7 +56,18 @@ object UserPreferences {
         getPrefs(context).edit()
             .putString(KEY_NOTIFICATION_SOUND_URI, uri)
             .putString(KEY_NOTIFICATION_SOUND_TITLE, title)
+            .putBoolean(KEY_NOTIFICATION_SOUND_SILENT, uri == null)
             .apply()
+    }
+
+    fun isNotificationSoundSilent(context: Context): Boolean = getPrefs(context).getBoolean(
+        KEY_NOTIFICATION_SOUND_SILENT, getNotificationSoundTitle(context) == "بی‌صدا")
+
+    fun getNotificationChannelRevision(context: Context): Long =
+        getPrefs(context).getLong(KEY_NOTIFICATION_CHANNEL_REVISION, 0L)
+
+    fun setNotificationChannelRevision(context: Context, revision: Long) {
+        getPrefs(context).edit().putLong(KEY_NOTIFICATION_CHANNEL_REVISION, revision).apply()
     }
 
     fun isPersistentNotificationEnabled(context: Context): Boolean {

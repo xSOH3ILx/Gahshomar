@@ -44,7 +44,10 @@ class AlarmReceiver : BroadcastReceiver() {
                             val isPre = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_PRE_REMINDER, false)
                             val isSnooze = intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_SNOOZE, false)
                             val preOffsetMinutes = intent.getIntExtra(AlarmScheduler.EXTRA_PRE_OFFSET_MINUTES, 0)
-                            if (entity != null && entity.isEnabled) {
+                            val validSnooze = isSnooze && AlarmIdentity.hasSnooze(context, reminderId,
+                                intent.getLongExtra(AlarmScheduler.EXTRA_SNOOZE_AT,
+                                    if (intent.data == null) AlarmIdentity.LEGACY_SNOOZE else 0L))
+                            if (entity != null && (if (isSnooze) validSnooze else entity.isEnabled)) {
                                 val posted = NotificationHelper.showReminderNotification(
                                     context = context,
                                     reminderId = entity.id,
@@ -54,12 +57,13 @@ class AlarmReceiver : BroadcastReceiver() {
                                     preOffsetMinutes = preOffsetMinutes
                                 )
                                 if (isPre || isSnooze) {
+                                    if (isSnooze && posted) AlarmIdentity.clearSnooze(context, reminderId)
                                     return@withTimeoutOrNull
                                 }
 
                                 val domain = entity.toDomain()
                                 if (domain.recurrence.type == RecurrenceType.NONE) {
-                                    db.reminderDao().updateReminder(entity.copy(isEnabled = false))
+                                    if (posted) db.reminderDao().updateReminder(entity.copy(isEnabled = false))
                                 } else {
                                     val nextEpoch = JalaliRecurrenceEngine.calculateNextTrigger(
                                         reminder = domain,
@@ -80,6 +84,7 @@ class AlarmReceiver : BroadcastReceiver() {
                         NotificationHelper.ACTION_MARK_DONE,
                         NotificationHelper.ACTION_DISMISS_REMINDER -> {
                             if (entity != null) {
+                                AlarmScheduler.cancelSnooze(context, reminderId)
                                 val domain = entity.toDomain()
                                 if (domain.recurrence.type == RecurrenceType.NONE) {
                                     db.reminderDao().updateReminder(entity.copy(isEnabled = false))

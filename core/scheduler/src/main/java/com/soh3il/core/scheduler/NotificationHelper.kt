@@ -26,7 +26,8 @@ object NotificationHelper {
     const val EXTRA_REMINDER_ID = "extra_reminder_id"
     const val EXTRA_SNOOZE_MINUTES = "extra_snooze_minutes"
 
-    private fun getEffectiveSoundUri(context: Context): Uri {
+    private fun selectedSoundUri(context: Context): Uri? {
+        if (UserPreferences.isNotificationSoundSilent(context)) return null
         val saved = UserPreferences.getNotificationSoundUri(context)
         return if (!saved.isNullOrEmpty()) {
             Uri.parse(saved)
@@ -35,21 +36,41 @@ object NotificationHelper {
         }
     }
 
-    fun createNotificationChannel(context: Context, customSoundUri: Uri? = null) {
+    private fun channelId(context: Context): String {
+        val revision = UserPreferences.getNotificationChannelRevision(context)
+        return if (revision == 0L) CHANNEL_ID else "$CHANNEL_ID.$revision"
+    }
+
+    fun getEffectiveSoundUri(context: Context): Uri? {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = manager.getNotificationChannel(channelId(context))
+        return if (channel != null) channel.sound else selectedSoundUri(context)
+    }
+
+    fun createNotificationChannel(context: Context, customSoundUri: Uri? = selectedSoundUri(context)) {
+        createChannel(context, channelId(context), customSoundUri)
+    }
+
+    private fun createChannel(context: Context, id: String, soundUri: Uri?, previous: NotificationChannel? = null) {
         val audioAttributes = AudioAttributes.Builder()
             .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
             .setUsage(AudioAttributes.USAGE_ALARM)
             .build()
 
-        val soundUri = customSoundUri ?: getEffectiveSoundUri(context)
-
         val channel = NotificationChannel(
-            CHANNEL_ID,
+            id,
             CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_HIGH
+            previous?.importance ?: NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "اعلان‌های زنده و فوری یادآورهای تقویم SOH3IL"
-            enableVibration(true)
+            previous?.vibrationPattern?.let { vibrationPattern = it }
+            enableVibration(previous?.shouldVibrate() ?: true)
+            previous?.let {
+                enableLights(it.shouldShowLights())
+                lightColor = it.lightColor
+                setShowBadge(it.canShowBadge())
+                lockscreenVisibility = it.lockscreenVisibility
+            }
             setSound(soundUri, audioAttributes)
         }
 
@@ -57,9 +78,11 @@ object NotificationHelper {
         manager.createNotificationChannel(channel)
     }
 
-    fun canPostNotifications(context: Context): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
-        return ContextCompat.checkSelfPermission(
+    fun canPostNotifications(context: Context, channelId: String? = null): Boolean {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        if (!manager.areNotificationsEnabled()) return false
+        if (channelId != null && manager.getNotificationChannel(channelId)?.importance == NotificationManager.IMPORTANCE_NONE) return false
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || ContextCompat.checkSelfPermission(
             context,
             android.Manifest.permission.POST_NOTIFICATIONS
         ) == PackageManager.PERMISSION_GRANTED
@@ -67,15 +90,22 @@ object NotificationHelper {
 
     fun updateNotificationChannelSound(context: Context, newSoundUri: Uri?) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        // Existing channels ignore sound changes. Recreate so the chosen ringtone applies.
-        manager.deleteNotificationChannel(CHANNEL_ID)
-        createNotificationChannel(context, newSoundUri)
+        val previous = manager.getNotificationChannel(channelId(context))
+        val revision = Math.addExact(UserPreferences.getNotificationChannelRevision(context), 1L)
+        val nextId = "$CHANNEL_ID.$revision"
+        // Android restores deleted channel settings. A new ID is used only on explicit sound selection.
+        createChannel(context, nextId, newSoundUri, previous)
+        UserPreferences.setNotificationChannelRevision(context, revision)
+        val activeChannels = manager.activeNotifications.map { it.notification.channelId }.toSet()
+        manager.notificationChannels.filter {
+            (it.id == CHANNEL_ID || it.id.startsWith("$CHANNEL_ID.")) && it.id != nextId && it.id !in activeChannels
+        }.forEach { manager.deleteNotificationChannel(it.id) }
     }
 
     fun cancelReminderNotification(context: Context, reminderId: Long, preOffsetMinutes: Int = 0) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notificationId = AlarmScheduler.computeAlarmRequestCode(reminderId, preOffsetMinutes)
-        notificationManager.cancel(notificationId)
+        notificationManager.cancel(AlarmIdentity.notificationTag(reminderId, preOffsetMinutes), notificationId)
     }
 
     fun showReminderNotification(
@@ -86,9 +116,9 @@ object NotificationHelper {
         isPreReminder: Boolean = false,
         preOffsetMinutes: Int = 0
     ): Boolean {
-        if (!canPostNotifications(context)) return false
+        createNotificationChannel(context)
+        if (!canPostNotifications(context, channelId(context))) return false
         val soundUri = getEffectiveSoundUri(context)
-        createNotificationChannel(context, soundUri)
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notificationId = AlarmScheduler.computeAlarmRequestCode(reminderId, preOffsetMinutes)
@@ -98,6 +128,7 @@ object NotificationHelper {
             context,
             "com.soh3il.calendar.MainActivity"
         ).apply {
+            data = AlarmIdentity.uri(reminderId, preOffsetMinutes, "open")
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(EXTRA_REMINDER_ID, reminderId)
         }
@@ -112,6 +143,7 @@ object NotificationHelper {
         // Action 1: Dismiss / Mark Done
         val doneIntent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_DISMISS_REMINDER
+            data = AlarmIdentity.uri(reminderId, preOffsetMinutes, "done")
             putExtra(EXTRA_REMINDER_ID, reminderId)
             putExtra(AlarmScheduler.EXTRA_PRE_OFFSET_MINUTES, preOffsetMinutes)
         }
@@ -125,6 +157,7 @@ object NotificationHelper {
         // Action 2: Snooze 10 minutes
         val snoozeIntent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_SNOOZE_REMINDER
+            data = AlarmIdentity.uri(reminderId, preOffsetMinutes, "snooze")
             putExtra(EXTRA_REMINDER_ID, reminderId)
             putExtra(EXTRA_SNOOZE_MINUTES, 10)
             putExtra(AlarmScheduler.EXTRA_PRE_OFFSET_MINUTES, preOffsetMinutes)
@@ -138,7 +171,7 @@ object NotificationHelper {
 
         val displayTitle = if (isPreReminder) "پیش‌یادآور: $title" else title
 
-        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, channelId(context))
             .setSmallIcon(android.R.drawable.ic_popup_reminder)
             .setContentTitle(displayTitle)
             .setContentText(description.ifEmpty { "زمان سررسید این رویداد فرا رسیده است." })
@@ -151,7 +184,7 @@ object NotificationHelper {
             .addAction(0, "تعویق ۱۰ دقیقه‌ای", snoozePendingIntent)
 
         return try {
-            notificationManager.notify(notificationId, builder.build())
+            notificationManager.notify(AlarmIdentity.notificationTag(reminderId, preOffsetMinutes), notificationId, builder.build())
             true
         } catch (_: SecurityException) {
             false

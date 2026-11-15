@@ -31,6 +31,29 @@ internal class ReminderDraftState(initialDate: JalaliDate, existingReminder: Rem
     var preReminderExpanded by mutableStateOf(false)
     var showDeleteConfirmDialog by mutableStateOf(false)
 
+    fun preRemindersForSave(existingReminder: Reminder?): List<PreReminder> {
+        val selected = when {
+            isCustomPreReminderSelected && customPreReminder != null -> {
+                listOf(customPreReminder!!)
+            }
+            selectedPreReminderMinutes != null -> {
+                val mins = selectedPreReminderMinutes!!
+                when {
+                    mins % 1440 == 0 -> listOf(PreReminder(mins / 1440, PreReminderUnit.DAYS))
+                    mins % 60 == 0 -> listOf(PreReminder(mins / 60, PreReminderUnit.HOURS))
+                    else -> listOf(PreReminder(mins, PreReminderUnit.MINUTES))
+                }
+            }
+            else -> emptyList()
+        }
+        val original = existingReminder?.preReminders.orEmpty()
+        return if (original.isNotEmpty() && selected.singleOrNull()?.toMinutes() == original.first().toMinutes()) {
+            original
+        } else {
+            selected
+        }
+    }
+
     companion object {
         val Saver = mapSaver<ReminderDraftState>(
             save = {

@@ -61,10 +61,11 @@ object JalaliRecurrenceEngine {
                     setOf(baseDate.dayOfWeek)
                 }
 
-                // Search up to (10 * interval) weeks ahead
+                val searchStart = if (todayJalali < baseDate) baseDate else todayJalali
+                // Search from the first eligible date, even when the anchor is far in the future.
                 val maxDaysToSearch = (7 * interval * 10).coerceAtLeast(60)
                 for (dayOffset in 0..maxDaysToSearch) {
-                    val dateToCheck = todayJalali.plusDays(dayOffset.toLong())
+                    val dateToCheck = searchStart.plusDays(dayOffset.toLong())
                     if (dateToCheck.toJdn() < baseDate.toJdn()) continue
                     if (dateToCheck.dayOfWeek in targetDaysOfWeek) {
                         val daysFromBase = dateToCheck.toJdn() - baseDate.toJdn()

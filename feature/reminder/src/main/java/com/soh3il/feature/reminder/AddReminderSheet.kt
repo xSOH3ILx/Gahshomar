@@ -41,8 +41,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.soh3il.core.designsystem.utils.toPersianDigits
 import com.soh3il.core.jalali.JalaliDate
-import com.soh3il.core.model.PreReminder
-import com.soh3il.core.model.PreReminderUnit
 import com.soh3il.core.model.RecurrenceRule
 import com.soh3il.core.model.RecurrenceType
 import com.soh3il.core.model.Reminder
@@ -195,20 +193,7 @@ fun AddReminderSheet(
                 Button(
                     onClick = {
                         if (title.isNotBlank()) {
-                            val preList = when {
-                                isCustomPreReminderSelected && customPreReminder != null -> {
-                                    listOf(customPreReminder!!)
-                                }
-                                selectedPreReminderMinutes != null -> {
-                                    val mins = selectedPreReminderMinutes!!
-                                    when {
-                                        mins % 1440 == 0 -> listOf(PreReminder(mins / 1440, PreReminderUnit.DAYS))
-                                        mins % 60 == 0 -> listOf(PreReminder(mins / 60, PreReminderUnit.HOURS))
-                                        else -> listOf(PreReminder(mins, PreReminderUnit.MINUTES))
-                                    }
-                                }
-                                else -> emptyList()
-                            }
+                            val preList = preRemindersForSave(existingReminder)
 
                             val reminder = Reminder(
                                 id = existingReminder?.id ?: 0L,

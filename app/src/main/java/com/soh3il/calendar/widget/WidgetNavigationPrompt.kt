@@ -18,7 +18,7 @@ internal fun WidgetNavigationPrompt(
     if (hasDraft) AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("پیش‌نویس باز دارید") },
-        text = { Text("برای بازکردن تاریخ یا یادآور ویجت، پیش‌نویس فعلی کنار گذاشته می‌شود.") },
+        text = { Text("برای بازکردن تاریخ یا یادآور، پیش‌نویس فعلی کنار گذاشته می‌شود.") },
         confirmButton = { TextButton(onClick = { onProceed(destination) }) { Text("کنارگذاشتن و ادامه") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("ماندن در پیش‌نویس") } }
     )

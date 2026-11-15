@@ -108,6 +108,7 @@ class MidnightReceiver : BroadcastReceiver() {
             }
 
             if (action in RESCHEDULE_ACTIONS) {
+                AlarmMigration.migrate(context)
                 activeReminders.forEach { reminder ->
                     AlarmScheduler.scheduleReminder(
                         context = context,

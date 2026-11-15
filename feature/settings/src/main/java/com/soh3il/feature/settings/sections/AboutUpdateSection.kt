@@ -39,6 +39,7 @@ import com.soh3il.core.updater.UpdateChecker
 import com.soh3il.core.updater.UpdateInfo
 import com.soh3il.feature.settings.components.SettingsSectionHeader
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.CancellationException
 
 @Composable
 fun AboutUpdateSection(
@@ -91,13 +92,21 @@ fun AboutUpdateSection(
                     coroutineScope.launch {
                         isCheckingUpdate = true
                         updateCheckMessage = null
-                        val result = UpdateChecker.checkForUpdates(currentVersionName)
-                        updateInfo = result
-                        isCheckingUpdate = false
-                        updateCheckMessage = if (result.hasUpdate) {
-                            "نسخه جدید ${result.latestVersionName.toPersianDigits()} در صفحه انتشار رسمی موجود است."
-                        } else {
-                            "شما از آخرین نسخه SOH3IL استفاده می‌کنید."
+                        updateInfo = null
+                        try {
+                            val result = UpdateChecker.checkForUpdates(currentVersionName)
+                            updateInfo = result
+                            updateCheckMessage = if (result.hasUpdate) {
+                                "نسخه جدید ${result.latestVersionName.toPersianDigits()} در صفحه انتشار رسمی موجود است."
+                            } else {
+                                "شما از آخرین نسخه SOH3IL استفاده می‌کنید."
+                            }
+                        } catch (error: CancellationException) {
+                            throw error
+                        } catch (error: Exception) {
+                            updateCheckMessage = "بررسی نسخه ممکن نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید."
+                        } finally {
+                            isCheckingUpdate = false
                         }
                     }
                 },

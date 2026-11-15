@@ -10,6 +10,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ReminderDraftStateTest {
+    @Test fun changingOnlyTheTitlePreservesAllImportedPreReminders() {
+        val original = Reminder(id = 2, title = "fixture", jalaliYear = 1405, jalaliMonth = 8,
+            jalaliDay = 24, hour = 9, minute = 0, preReminders = listOf(
+                PreReminder(15, PreReminderUnit.MINUTES), PreReminder(2, PreReminderUnit.HOURS), PreReminder(1, PreReminderUnit.DAYS)))
+        val draft = ReminderDraftState(JalaliDate(1405, 8, 24), original)
+        draft.title = "updated"
+        assertEquals(original.preReminders, draft.preRemindersForSave(original))
+        val scope = object : SaverScope { override fun canBeSaved(value: Any) = true }
+        val saved = with(ReminderDraftState.Saver) { scope.save(draft) }!!
+        val restored = ReminderDraftState.Saver.restore(saved)!!
+        assertEquals(original.preReminders, restored.preRemindersForSave(original))
+        restored.selectedPreReminderMinutes = 30
+        assertEquals(listOf(PreReminder(30, PreReminderUnit.MINUTES)), restored.preRemindersForSave(original))
+        restored.selectedPreReminderMinutes = null
+        assertEquals(emptyList<PreReminder>(), restored.preRemindersForSave(original))
+    }
+
     @Test fun editingKeepsTheStoredDateInsteadOfTheDefaultDate() {
         val reminder = Reminder(id = 17, title = "ویرایش", jalaliYear = 1403, jalaliMonth = 12, jalaliDay = 30, hour = 10, minute = 0)
         val draft = ReminderDraftState(JalaliDate(1405, 8, 23), reminder)

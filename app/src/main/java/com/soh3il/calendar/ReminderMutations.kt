@@ -20,15 +20,10 @@ internal object ReminderMutations {
             if (error !is IOException && error !is IllegalArgumentException && error !is SecurityException) throw error
             return Result.failure(error)
         }
-        val existing = db.reminderDao().getAllRemindersSync().map { it.toDomain() }
+        val seen = db.reminderDao().getAllRemindersSync().map { importIdentity(it.toDomain()) }.toMutableSet()
         var addedCount = 0
         imported.forEach { rem ->
-            val isDuplicate = existing.any {
-                it.title == rem.title && it.jalaliYear == rem.jalaliYear &&
-                    it.jalaliMonth == rem.jalaliMonth && it.jalaliDay == rem.jalaliDay &&
-                    it.hour == rem.hour && it.minute == rem.minute
-            }
-            if (!isDuplicate) {
+            if (seen.add(importIdentity(rem))) {
                 val id = db.reminderDao().insertReminder(ReminderEntity.fromDomain(rem))
                 AlarmScheduler.scheduleReminder(context, rem.copy(id = id))
                 addedCount++
@@ -37,6 +32,10 @@ internal object ReminderMutations {
         refresh(context)
         return Result.success(imported.size to addedCount)
     }
+
+    private fun importIdentity(reminder: Reminder): Pair<Reminder, List<Long>> =
+        reminder.copy(id = 0L, isEnabled = true, nextTriggerEpochMillis = 0L, preReminders = emptyList()) to
+            reminder.preReminders.map { it.toMinutes() }.distinct().sorted()
 
     suspend fun save(context: Context, db: Soh3ilDatabase, reminder: Reminder) {
         if (reminder.id != 0L) {

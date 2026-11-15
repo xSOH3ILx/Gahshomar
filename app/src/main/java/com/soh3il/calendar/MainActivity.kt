@@ -39,6 +39,7 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
 
     private var widgetDestination by mutableStateOf<com.soh3il.calendar.widget.WidgetDestination?>(null)
+    private var notificationReminderId by mutableStateOf<Long?>(null)
 
     private var integrationRefreshVersion by mutableStateOf(0)
 
@@ -73,6 +74,8 @@ class MainActivity : ComponentActivity() {
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
         com.soh3il.calendar.widget.WidgetNavigation.parse(intent)?.let { widgetDestination = it }
+        notificationReminderId = intent.getLongExtra(com.soh3il.core.scheduler.NotificationHelper.EXTRA_REMINDER_ID, 0L).takeIf { it > 0 }
+        if (notificationReminderId != null) widgetDestination = null
         if (
             intent.action == com.soh3il.core.scheduler.PersistentNotificationHelper.ACTION_OPEN_ADD_REMINDER ||
             intent.getBooleanExtra(com.soh3il.core.scheduler.PersistentNotificationHelper.EXTRA_OPEN_ADD_REMINDER, false)
@@ -113,6 +116,8 @@ class MainActivity : ComponentActivity() {
             @Suppress("DEPRECATION")
             val pending = savedInstanceState.getParcelable<Intent>("pending_widget_navigation")
             widgetDestination = com.soh3il.calendar.widget.WidgetNavigation.parse(pending)
+            notificationReminderId = savedInstanceState.getLong("pending_notification_reminder", 0L).takeIf { it > 0 }
+            openConverterTrigger = savedInstanceState.getBoolean("pending_converter")
         }
 
         setContent {
@@ -135,6 +140,10 @@ class MainActivity : ComponentActivity() {
                 val remindersState by db.reminderDao().getAllReminders().collectAsState(initial = null)
                 val reminders = remindersState.orEmpty().map { it.toDomain() }
                 val editingReminder = reminders.firstOrNull { it.id == editingReminderId }
+                ResolveReminderEntry(notificationReminderId, reminders.takeIf { remindersState != null }) {
+                    widgetDestination = it
+                    notificationReminderId = null
+                }
                 com.soh3il.calendar.widget.WidgetNavigationPrompt(
                     destination = widgetDestination, hasDraft = showAddSheet,
                     ready = widgetDestination?.reminderId == null || remindersState != null,
@@ -164,16 +173,7 @@ class MainActivity : ComponentActivity() {
                     contactsPermissionGranted, integrationRefreshVersion
                 )
 
-                val currentVersion = remember {
-                    runCatching {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0)).versionName
-                        } else {
-                            @Suppress("DEPRECATION")
-                            packageManager.getPackageInfo(packageName, 0).versionName
-                        }
-                    }.getOrNull() ?: "1.0.0"
-                }
+                val currentVersion = remember { installedVersion(context) }
 
                 // Update persistent notification, Home Screen Widget, and Live Launcher Icon
                 androidx.compose.runtime.LaunchedEffect(reminders) {
@@ -197,7 +197,6 @@ class MainActivity : ComponentActivity() {
                         openTodayTrigger = false
                     } else if (openConverterTrigger) {
                         currentTab = 1
-                        openConverterTrigger = false
                     }
                 }
 
@@ -227,6 +226,8 @@ class MainActivity : ComponentActivity() {
                                     }
                                 )
                                 1 -> SettingsScreen(
+                                    openDateConverterRequested = openConverterTrigger,
+                                    onDateConverterRequestHandled = { openConverterTrigger = false },
                                     onWidgetsClick = { showWidgetPicker = true },
                                     currentTheme = currentTheme,
                                     onThemeSelected = {
@@ -340,6 +341,8 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        notificationReminderId?.let { outState.putLong("pending_notification_reminder", it) }
+        outState.putBoolean("pending_converter", openConverterTrigger)
         widgetDestination?.let {
             outState.putParcelable("pending_widget_navigation", com.soh3il.calendar.widget.WidgetNavigation.intent(this, 0, it))
         }

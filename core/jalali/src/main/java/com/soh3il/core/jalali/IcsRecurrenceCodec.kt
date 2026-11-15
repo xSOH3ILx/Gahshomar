@@ -4,6 +4,7 @@ import com.soh3il.core.model.RecurrenceRule
 import com.soh3il.core.model.RecurrenceType
 import com.soh3il.core.model.Reminder
 import com.soh3il.core.model.ShortMonthPolicy
+import java.util.Locale
 
 internal object IcsRecurrenceCodec {
     private val ICS_DAY_TO_PERSIAN = mapOf(
@@ -52,24 +53,25 @@ internal object IcsRecurrenceCodec {
     }
 
     fun parseStandardRrule(rrule: String): RecurrenceRule {
+        val normalized = rrule.uppercase(Locale.ROOT)
         var recType = RecurrenceType.NONE
         var recInterval = 1
-        if (rrule.contains("FREQ=DAILY", ignoreCase = true)) {
+        if (normalized.contains("FREQ=DAILY", ignoreCase = true)) {
             recType = RecurrenceType.DAILY
-        } else if (rrule.contains("FREQ=WEEKLY", ignoreCase = true)) {
+        } else if (normalized.contains("FREQ=WEEKLY", ignoreCase = true)) {
             recType = RecurrenceType.WEEKLY
-        } else if (rrule.contains("FREQ=MONTHLY", ignoreCase = true)) {
+        } else if (normalized.contains("FREQ=MONTHLY", ignoreCase = true)) {
             recType = RecurrenceType.MONTHLY_GREGORIAN
-        } else if (rrule.contains("FREQ=YEARLY", ignoreCase = true)) {
+        } else if (normalized.contains("FREQ=YEARLY", ignoreCase = true)) {
             recType = RecurrenceType.YEARLY_GREGORIAN
         }
 
-        if (rrule.contains("INTERVAL=", ignoreCase = true)) {
-            val intervalStr = rrule.substringAfter("INTERVAL=").substringBefore(";")
+        if (normalized.contains("INTERVAL=", ignoreCase = true)) {
+            val intervalStr = normalized.substringAfter("INTERVAL=").substringBefore(";")
             recInterval = intervalStr.toIntOrNull() ?: 1
         }
-        val daysOfWeek = if (rrule.contains("BYDAY=", ignoreCase = true)) {
-            rrule.substringAfter("BYDAY=")
+        val daysOfWeek = if (normalized.contains("BYDAY=", ignoreCase = true)) {
+            normalized.substringAfter("BYDAY=")
                 .substringBefore(";")
                 .split(",")
                 .mapNotNull { ICS_DAY_TO_PERSIAN[it.trim().uppercase()] }

@@ -4,8 +4,6 @@ import android.content.Context
 import android.content.Intent
 import android.media.Ringtone
 import android.media.RingtoneManager
-import android.net.Uri
-import android.provider.Settings
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -41,7 +39,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.soh3il.core.database.preferences.UserPreferences
+import com.soh3il.core.scheduler.NotificationHelper
 import com.soh3il.core.designsystem.components.FarsiCard
 import com.soh3il.feature.settings.components.SettingsSectionHeader
 
@@ -272,13 +270,11 @@ fun NotificationsSection(
                                     currentRingtone?.stop()
                                     isPlayingPreview = false
                                 } else {
-                                    val currentUriString = UserPreferences.getNotificationSoundUri(context)
-                                    val uri = currentUriString?.let { Uri.parse(it) }
-                                        ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
-                                    val ringtone = RingtoneManager.getRingtone(context, uri)
+                                    val uri = NotificationHelper.getEffectiveSoundUri(context)
+                                    val ringtone = uri?.let { RingtoneManager.getRingtone(context, it) }
                                     currentRingtone = ringtone
                                     ringtone?.play()
-                                    isPlayingPreview = true
+                                    isPlayingPreview = ringtone?.isPlaying == true
                                 }
                             } catch (_: Exception) {}
                         },
@@ -293,9 +289,7 @@ fun NotificationsSection(
 
                     OutlinedButton(
                         onClick = {
-                            val currentUriString = UserPreferences.getNotificationSoundUri(context)
-                            val existingUri = currentUriString?.let { Uri.parse(it) }
-                                ?: Settings.System.DEFAULT_NOTIFICATION_URI
+                            val existingUri = NotificationHelper.getEffectiveSoundUri(context)
                             val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
                                 putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION or RingtoneManager.TYPE_ALARM)
                                 putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "انتخاب صدای اعلان یادآور SOH3IL")

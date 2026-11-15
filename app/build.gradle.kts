@@ -72,20 +72,27 @@ android {
         if (it.isAbsolute) it else rootProject.file(resolvedStoreFilePath)
     }
     val hasReleaseKeystore = keyStoreFile.exists()
+    val hasReleaseSigning = hasReleaseKeystore &&
+        !resolvedStorePassword.isNullOrBlank() && !resolvedKeyAlias.isNullOrBlank() &&
+        !resolvedKeyPassword.isNullOrBlank()
+    val requireReleaseSigning = tasks.register("requireReleaseSigning") {
+        doLast {
+            if (!hasReleaseSigning) {
+                throw GradleException("Release signing requires a keystore and all signing credentials. Set KEYSTORE_FILE, KEYSTORE_PASSWORD, KEY_ALIAS and KEY_PASSWORD or signing/keystore.properties.")
+            }
+        }
+    }
+    tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+        dependsOn(requireReleaseSigning)
+    }
 
     signingConfigs {
-        if (hasReleaseKeystore) {
-            val storePassword = resolvedStorePassword
-                ?: error("Release signing requires KEYSTORE_PASSWORD or signing/keystore.properties storePassword")
-            val keyAlias = resolvedKeyAlias
-                ?: error("Release signing requires KEY_ALIAS or signing/keystore.properties keyAlias")
-            val keyPassword = resolvedKeyPassword
-                ?: error("Release signing requires KEY_PASSWORD or signing/keystore.properties keyPassword")
+        if (hasReleaseSigning) {
             create("release") {
                 storeFile = keyStoreFile
-                this.storePassword = storePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
+                storePassword = resolvedStorePassword
+                keyAlias = resolvedKeyAlias
+                keyPassword = resolvedKeyPassword
             }
         }
     }
@@ -98,13 +105,9 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            if (!hasReleaseKeystore) {
-                throw GradleException(
-                    "Refusing to sign the release APK with the debug certificate. " +
-                        "Set KEYSTORE_FILE or add an untracked signing/release.jks."
-                )
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
             }
-            signingConfig = signingConfigs.getByName("release")
         }
         debug {
             applicationIdSuffix = ".debug"
@@ -156,6 +159,7 @@ android {
 
 dependencies {
     testImplementation(libs.robolectric)
+    testImplementation(libs.okhttp)
     implementation(project(":core:model"))
     implementation(project(":core:jalali"))
     implementation(project(":core:database"))
@@ -178,6 +182,9 @@ dependencies {
     implementation(libs.androidx.activity.compose)
 
     testImplementation(libs.junit)
+    testImplementation(libs.compose.ui.test.junit4)
+    testImplementation(libs.androidx.test.ext.junit)
+    testImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
