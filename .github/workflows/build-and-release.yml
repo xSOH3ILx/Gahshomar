@@ -44,8 +44,8 @@ jobs:
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore/release.jks"
           echo "KEYSTORE_FILE=$RUNNER_TEMP/keystore/release.jks" >> $GITHUB_ENV
 
-      - name: Run Unit Tests (TDD Verification)
-        run: ./gradlew testDebugUnitTest --stacktrace
+      - name: Run Calendar Tests, Android Unit Tests, Lint and Debug Build
+        run: ./gradlew :core:jalali:test testDebugUnitTest lintDebug assembleDebug --stacktrace
 
       - name: Build Signed Release APKs (Multi-Arch Splits)
         run: ./gradlew assembleRelease --stacktrace

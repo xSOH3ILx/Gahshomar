@@ -1,0 +1,5 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" tools:targetApi="31"
+    android:initialLayout="@layout/widget_calendar_agenda" android:previewLayout="@layout/widget_calendar_agenda"
+    android:minWidth="250dp" android:minHeight="220dp" android:targetCellWidth="4" android:targetCellHeight="3"
+    android:resizeMode="horizontal|vertical" android:updatePeriodMillis="0" android:widgetCategory="home_screen|keyguard"
+    android:configure="com.soh3il.calendar.widget.WidgetConfigurationActivity" android:widgetFeatures="reconfigurable|configuration_optional" />

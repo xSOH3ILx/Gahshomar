@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/compact_widget_root"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/compact_widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:layoutDirection="rtl">
+    <ImageView android:id="@+id/widget_background" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/widget_bg" android:importantForAccessibility="no" android:contentDescription="@null" />
+    <LinearLayout
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:layoutDirection="rtl"
-    android:background="@drawable/widget_day_badge_bg"
     android:gravity="center"
     android:orientation="vertical"
     android:padding="8dp">
@@ -38,3 +38,4 @@
         android:textColor="@color/widget_on_surface_variant"
         android:textSize="11sp" />
 </LinearLayout>
+</FrameLayout>

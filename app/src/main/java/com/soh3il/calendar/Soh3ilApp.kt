@@ -8,6 +8,8 @@ class Soh3ilApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.soh3il.core.scheduler.DateStatusRecovery.install(this)
+        com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(this, null)
         NotificationHelper.createNotificationChannel(this)
         LiveIconHelper.validateAndHealLauncherAliases(this)
     }

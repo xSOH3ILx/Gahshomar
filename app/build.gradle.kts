@@ -127,6 +127,10 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
+
     packaging {
         jniLibs {
             // This prebuilt library has no strip-compatible symbol table.
@@ -151,6 +155,7 @@ android {
 }
 
 dependencies {
+    testImplementation(libs.robolectric)
     implementation(project(":core:model"))
     implementation(project(":core:jalali"))
     implementation(project(":core:database"))

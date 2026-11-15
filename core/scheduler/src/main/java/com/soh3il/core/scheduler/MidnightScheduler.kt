@@ -5,7 +5,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import java.util.Calendar
+import android.util.Log
+import com.soh3il.core.jalali.JalaliDate
 
 object MidnightScheduler {
 
@@ -21,21 +22,9 @@ object MidnightScheduler {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
 
         val now = System.currentTimeMillis()
-        val cal = Calendar.getInstance().apply {
-            timeInMillis = now
-            add(Calendar.DAY_OF_YEAR, 1)
-            set(Calendar.HOUR_OF_DAY, 0)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 5)
-            set(Calendar.MILLISECOND, 0)
-        }
-        var triggerAtMillis = cal.timeInMillis
-
-        // Guard against any timezone/DST jump that results in a past timestamp
-        if (triggerAtMillis <= now) {
-            cal.add(Calendar.DAY_OF_YEAR, 1)
-            triggerAtMillis = cal.timeInMillis
-        }
+        val today = JalaliDate.fromEpochMillis(now)
+        val todayTick = today.toEpochMillis(0, 0, 5)
+        val triggerAtMillis = if (todayTick > now) todayTick else today.plusDays(1).toEpochMillis(0, 0, 5)
 
         val intent = Intent(context, MidnightReceiver::class.java).apply {
             action = ACTION_MIDNIGHT_TICK
@@ -57,10 +46,9 @@ object MidnightScheduler {
             } else {
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             }
-        } catch (_: SecurityException) {
+        } catch (error: SecurityException) {
+            Log.w("MidnightScheduler", "Exact date alarm unavailable; scheduling an inexact date update")
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        } catch (_: Exception) {
-            alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
     }
 

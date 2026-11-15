@@ -1,6 +1,5 @@
 package com.soh3il.core.scheduler
 
-import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -8,11 +7,13 @@ import android.content.Intent
 import android.util.Log
 import com.soh3il.core.database.Soh3ilDatabase
 import com.soh3il.core.database.preferences.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 
 /**
  * Handles in-app midnight and notification-dismiss signals.
@@ -63,34 +64,13 @@ class MidnightReceiver : BroadcastReceiver() {
         ) {
             CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
                 try {
-                    withTimeoutOrNull(8_500L) {
-                        val db = Soh3ilDatabase.getInstance(context)
-                        val activeReminders = db.reminderDao().getAllActiveRemindersSync().map { it.toDomain() }
-
-                        if (action == ACTION_NOTIFICATION_DISMISSED) {
-                            if (UserPreferences.isPersistentNotificationEnabled(context) &&
-                                NotificationHelper.canPostNotifications(context)
-                            ) {
-                                PersistentNotificationHelper.updateNotification(context, activeReminders)
-                            }
-                            return@withTimeoutOrNull
-                        }
-
-                        if (action in RESCHEDULE_ACTIONS) {
-                            activeReminders.forEach { reminder ->
-                                AlarmScheduler.scheduleReminder(
-                                    context = context,
-                                    reminder = reminder,
-                                    forceRecalculate = true
-                                )
-                            }
-                        }
-
-                        PersistentNotificationHelper.updateNotification(context, activeReminders)
-                        requestWidgetUpdate(context)
-                        LiveIconHelper.updateLiveIcon(context)
-                        MidnightScheduler.scheduleMidnightAlarm(context)
+                    withTimeout(8_500L) {
+                        refreshNow(context, action)
                     }
+                } catch (error: TimeoutCancellationException) {
+                    Log.w(TAG, "Calendar details timed out; date and next alarm were already refreshed")
+                } catch (error: CancellationException) {
+                    throw error
                 } catch (e: Exception) {
                     Log.e(TAG, "calendar refresh failed: ${e.javaClass.simpleName}")
                 } finally {
@@ -99,27 +79,52 @@ class MidnightReceiver : BroadcastReceiver() {
             }
         }
 
-        fun requestWidgetUpdate(context: Context) {
-            try {
-                val manager = AppWidgetManager.getInstance(context)
-                listOf(
-                    "com.soh3il.calendar.widget.CalendarAppWidgetProvider",
-                    "com.soh3il.calendar.widget.CompactCalendarWidgetProvider",
-                    "com.soh3il.calendar.widget.MonthCalendarWidgetProvider"
-                ).forEach { providerName ->
-                    val component = ComponentName(context.packageName, providerName)
-                    val ids = manager.getAppWidgetIds(component)
-                    if (ids.isNotEmpty()) {
-                        val intent = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {
-                            this.component = component
-                            putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-                        }
-                        context.sendBroadcast(intent)
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "widget refresh failed: ${e.javaClass.simpleName}")
+        suspend fun refreshNow(
+            context: Context,
+            action: String,
+            readReminders: suspend () -> List<com.soh3il.core.model.Reminder> = {
+                Soh3ilDatabase.getInstance(context).reminderDao().getAllActiveRemindersSync().map { it.toDomain() }
             }
+        ) {
+            MidnightScheduler.scheduleMidnightAlarm(context)
+            PersistentNotificationHelper.updateNotification(context, null)
+            requestWidgetUpdate(context)
+            val activeReminders = try {
+                readReminders()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                PersistentNotificationHelper.updateNotification(context, null, summaryUnavailable = true)
+                throw error
+            }
+
+            if (action == ACTION_NOTIFICATION_DISMISSED) {
+                if (UserPreferences.isPersistentNotificationEnabled(context) &&
+                    NotificationHelper.canPostNotifications(context)
+                ) {
+                    PersistentNotificationHelper.updateNotification(context, activeReminders)
+                }
+                return
+            }
+
+            if (action in RESCHEDULE_ACTIONS) {
+                activeReminders.forEach { reminder ->
+                    AlarmScheduler.scheduleReminder(
+                        context = context,
+                        reminder = reminder,
+                        forceRecalculate = true
+                    )
+                }
+            }
+
+            PersistentNotificationHelper.updateNotification(context, activeReminders)
+            LiveIconHelper.updateLiveIcon(context)
+        }
+
+        fun requestWidgetUpdate(context: Context) {
+            context.sendBroadcast(Intent("com.soh3il.calendar.widget.REFRESH").apply {
+                component = ComponentName(context.packageName, "com.soh3il.calendar.widget.CalendarAppWidgetProvider")
+            })
         }
     }
 }

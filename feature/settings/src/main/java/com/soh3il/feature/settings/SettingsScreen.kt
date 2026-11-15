@@ -1,8 +1,6 @@
 package com.soh3il.feature.settings
 
 import android.app.Activity
-import android.appwidget.AppWidgetManager
-import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.media.RingtoneManager
@@ -107,24 +105,7 @@ fun SettingsScreen(
     }
 
     fun syncAllWidgetsAndNotifications() {
-        // 1. Broadcast all SOH3IL widget variants without coupling this feature to :app
-        val manager = AppWidgetManager.getInstance(context)
-        listOf(
-            "com.soh3il.calendar.widget.CalendarAppWidgetProvider",
-            "com.soh3il.calendar.widget.CompactCalendarWidgetProvider",
-            "com.soh3il.calendar.widget.MonthCalendarWidgetProvider"
-        ).forEach { providerName ->
-            val component = ComponentName(context.packageName, providerName)
-            val ids = manager.getAppWidgetIds(component)
-            if (ids.isNotEmpty()) {
-                context.sendBroadcast(
-                    Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).apply {
-                        this.component = component
-                        putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
-                    }
-                )
-            }
-        }
+        com.soh3il.core.scheduler.MidnightReceiver.requestWidgetUpdate(context)
 
         // 2. Refresh Persistent Notification
         scope.launch(Dispatchers.IO) {

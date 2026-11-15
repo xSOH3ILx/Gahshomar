@@ -597,6 +597,19 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
+        <receiver android:name=".widget.WidgetPinReceiver" android:exported="false" />
+        <activity android:name=".widget.WidgetConfigurationActivity" android:exported="true">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
+        </activity>
+        <service android:name=".widget.WidgetAgendaService" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS" />
+        <receiver android:name=".widget.WeekCalendarWidgetProvider" android:label="@string/widget_week_label" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_calendar_week_info" />
+        </receiver>
+        <receiver android:name=".widget.AgendaCalendarWidgetProvider" android:label="@string/widget_agenda_label" android:exported="false">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_calendar_agenda_info" />
+        </receiver>
     </application>
 
 </manifest>

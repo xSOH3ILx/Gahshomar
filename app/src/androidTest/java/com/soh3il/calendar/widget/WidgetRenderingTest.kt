@@ -4,6 +4,8 @@ import android.content.res.Configuration
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.RemoteViews
+import android.util.SizeF
+import com.soh3il.core.jalali.JalaliDate
 import androidx.test.core.app.ApplicationProvider
 import com.soh3il.calendar.R
 import org.junit.Assert.assertTrue
@@ -14,7 +16,10 @@ class WidgetRenderingTest {
         val app = ApplicationProvider.getApplicationContext<android.content.Context>()
         val config = Configuration(app.resources.configuration).apply { this.fontScale = fontScale }
         val context = app.createConfigurationContext(config)
-        val root = RemoteViews(context.packageName, R.layout.widget_calendar_month).apply(context, FrameLayout(context))
+        val today = JalaliDate.now()
+        val root = WidgetRenderer.render(context, WidgetKind.MONTH, 123,
+            WidgetSnapshot(today.toEpochMillis(8), emptyList()), SizeF(widthDp.toFloat(), heightDp.toFloat()))
+            .apply(context, FrameLayout(context))
         val density = context.resources.displayMetrics.density
         val width = (widthDp * density).toInt()
         val height = (heightDp * density).toInt()
@@ -28,6 +33,10 @@ class WidgetRenderingTest {
         for (index in 0..41) {
             val id = context.resources.getIdentifier("month_cell_$index", "id", context.packageName)
             val cell = root.findViewById<View>(id)
+            if ((cell.parent as View).visibility == View.GONE) {
+                assertTrue("Hidden row contains a real day", (cell as android.widget.TextView).text.isEmpty())
+                continue
+            }
             val bounds = android.graphics.Rect()
             cell.getDrawingRect(bounds)
             (root as android.view.ViewGroup).offsetDescendantRectToMyCoords(cell, bounds)

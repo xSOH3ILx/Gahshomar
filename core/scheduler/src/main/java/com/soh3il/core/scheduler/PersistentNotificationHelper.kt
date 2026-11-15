@@ -21,6 +21,11 @@ import com.soh3il.core.jalali.IranianHolidays
 import com.soh3il.core.jalali.JalaliDate
 import com.soh3il.core.jalali.matchesDate
 import com.soh3il.core.model.Reminder
+import android.os.Bundle
+import android.util.Log
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,6 +35,8 @@ object PersistentNotificationHelper {
     private const val CHANNEL_ID = "persistent_date_channel"
     private const val CHANNEL_NAME = "نوار اعلان دائمی تاریخ"
     private const val NOTIFICATION_ID = 2001
+    const val EXTRA_DATE_JDN = "soh3il.date.jdn"
+    private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     const val EXTRA_OPEN_ADD_REMINDER = "extra_open_add_reminder"
     const val ACTION_OPEN_ADD_REMINDER = "com.soh3il.calendar.action.OPEN_ADD_REMINDER"
 
@@ -83,92 +90,8 @@ object PersistentNotificationHelper {
         return bitmap
     }
 
-    /**
-     * بَدج اختصاصی تاریخ امروز با سبک تقویم متریال ۳ جهت نمایش به عنوان LargeIcon اعلان
-     */
-    private fun createDateBadgeBitmap(context: Context, today: JalaliDate): Bitmap {
-        val density = context.resources.displayMetrics.density
-        val sizePx = (72 * density).toInt().coerceAtLeast(144)
-        val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-        val canvas = Canvas(bitmap)
-
-        val cornerRadius = sizePx * 0.24f
-        val fullRect = android.graphics.RectF(0f, 0f, sizePx.toFloat(), sizePx.toFloat())
-
-        // پس‌زمینه خنثی آیکون و اعلان (خاکستری Expressive)
-        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(91, 98, 106)
-            style = Paint.Style.FILL
-        }
-        canvas.drawRoundRect(fullRect, cornerRadius, cornerRadius, bgPaint)
-
-        // نوار بالایی نام ماه با سبز فسفری خوانا
-        val headerHeight = sizePx * 0.34f
-        val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(215, 255, 74)
-            style = Paint.Style.FILL
-        }
-        val headerPath = android.graphics.Path().apply {
-            addRoundRect(
-                fullRect,
-                floatArrayOf(
-                    cornerRadius, cornerRadius,
-                    cornerRadius, cornerRadius,
-                    0f, 0f,
-                    0f, 0f
-                ),
-                android.graphics.Path.Direction.CW
-            )
-        }
-        canvas.save()
-        canvas.clipRect(0f, 0f, sizePx.toFloat(), headerHeight)
-        canvas.drawPath(headerPath, headerPaint)
-        canvas.restore()
-
-        // متن نام ماه خورشیدی
-        val monthText = today.monthNameFa
-        val monthPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(35, 39, 43)
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textSize = headerHeight * 0.52f
-            textAlign = Paint.Align.CENTER
-        }
-        val monthBounds = Rect()
-        monthPaint.getTextBounds(monthText, 0, monthText.length, monthBounds)
-        val monthY = (headerHeight / 2f) - monthBounds.exactCenterY()
-        canvas.drawText(monthText, sizePx / 2f, monthY, monthPaint)
-
-        // عدد بزرگ روز خورشیدی در بدنه کارت
-        val dayText = today.day.toPersianDigits()
-        val dayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(215, 255, 74)
-            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-            textSize = (sizePx - headerHeight) * 0.65f
-            textAlign = Paint.Align.CENTER
-        }
-        val dayBounds = Rect()
-        dayPaint.getTextBounds(dayText, 0, dayText.length, dayBounds)
-        val bodyCenterY = headerHeight + (sizePx - headerHeight) / 2f
-        val dayY = bodyCenterY - dayBounds.exactCenterY()
-        canvas.drawText(dayText, sizePx / 2f, dayY, dayPaint)
-
-        return bitmap
-    }
-
-    @Suppress("DiscouragedApi")
-    private fun getDayDrawableRes(context: Context, day: Int): Int {
-        val safeDay = day.coerceIn(1, 31)
-        val resName = "ic_stat_day_$safeDay"
-        val resId = context.resources.getIdentifier(resName, "drawable", context.packageName)
-        if (resId != 0) return resId
-
-        val dsResId = context.resources.getIdentifier(resName, "drawable", "com.soh3il.core.designsystem")
-        if (dsResId != 0) return dsResId
-
-        return android.R.drawable.ic_menu_today
-    }
-
-    fun updateNotification(context: Context, reminders: List<Reminder>) {
+    fun updateNotification(context: Context, reminders: List<Reminder>?, summaryUnavailable: Boolean = false) {
+        MidnightScheduler.scheduleMidnightAlarm(context)
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         if (!UserPreferences.isPersistentNotificationEnabled(context)) {
@@ -199,7 +122,7 @@ object PersistentNotificationHelper {
             .filter { it.jalaliDate == todayStr }
 
         // Today's active reminders count (including recurring reminders)
-        val todayRemindersCount = reminders.count { it.matchesDate(today) }
+        val todayRemindersCount = reminders?.count { it.matchesDate(today) }
 
         // تفکیک خطوط به شکل ساختاریافته، کاملاً راست‌چین و بدون فشردگی خطی (بدون ایموجی طبق قوانین طراحی برنامه)
         val lineJalali = "${rlm}تقویم خورشیدی: ${today.dayOfWeekNameFa}، ${today.day.toPersianDigits()} ${today.monthNameFa} ${today.year.toPersianDigits()}"
@@ -218,7 +141,9 @@ object PersistentNotificationHelper {
             "${rlm}رویدادها: بدون رویداد تعطیل"
         }
 
-        val lineReminders = if (todayRemindersCount > 0) {
+        val lineReminders = if (todayRemindersCount == null) {
+            if (summaryUnavailable) "${rlm}یادآورها: خواندن اطلاعات ممکن نشد" else "${rlm}یادآورها: در حال بررسی"
+        } else if (todayRemindersCount > 0) {
             "${rlm}یادآورها: ${todayRemindersCount.toPersianDigits()} یادآور برای امروز"
         } else {
             "${rlm}یادآورها: بدون یادآور برای امروز"
@@ -285,8 +210,9 @@ object PersistentNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val smallIconRes = getDayDrawableRes(context, today.day)
+        val smallIconRes = DateNotificationAssets.getDayDrawableRes(context, today.day)
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+            .addExtras(Bundle().apply { putLong(EXTRA_DATE_JDN, today.toJdn()) })
             .setContentTitle(fullTitle)
             .setContentText(shortSummary)
             .setStyle(
@@ -316,7 +242,7 @@ object PersistentNotificationHelper {
         builder.setSmallIcon(smallIconRes)
 
         // نمایش بَدج گرافیکی تقویم امروز بجای آیکون پیش‌فرض برنامه در بدنه اعلان
-        val dateBadgeBitmap = createDateBadgeBitmap(context, today)
+        val dateBadgeBitmap = DateNotificationAssets.createDateBadgeBitmap(context, today)
         builder.setLargeIcon(dateBadgeBitmap)
 
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -335,24 +261,36 @@ object PersistentNotificationHelper {
         val notification = builder.build()
         try {
             notificationManager.notify(NOTIFICATION_ID, notification)
-        } catch (_: SecurityException) {
-            return
+        } catch (error: SecurityException) {
+            Log.w("PersistentDate", "Date notification permission unavailable")
         }
-
-        // Ensure next midnight alarm is scheduled for exact date rollover
-        MidnightScheduler.scheduleMidnightAlarm(context)
     }
 
     fun updateNotification(context: Context) {
-        CoroutineScope(Dispatchers.IO).launch {
+        val app = context.applicationContext
+        // Date and the next alarm must not depend on database availability.
+        updateNotification(app, null)
+        refreshScope.launch {
             try {
-                val db = com.soh3il.core.database.Soh3ilDatabase.getInstance(context)
-                val activeReminders = db.reminderDao().getAllActiveRemindersSync().map { it.toDomain() }
-                updateNotification(context, activeReminders)
-            } catch (_: Exception) {
-                updateNotification(context, emptyList())
+                withTimeout(8_500L) {
+                    val db = com.soh3il.core.database.Soh3ilDatabase.getInstance(app)
+                    val active = db.reminderDao().getAllActiveRemindersSync().map { it.toDomain() }
+                    updateNotification(app, active)
+                }
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                Log.e("PersistentDate", "Reminder summary unavailable: ${error.javaClass.simpleName}")
+                updateNotification(app, null, summaryUnavailable = true)
             }
         }
+    }
+
+    fun needsRefresh(context: Context): Boolean {
+        if (!UserPreferences.isPersistentNotificationEnabled(context)) return false
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val current = manager.activeNotifications.firstOrNull { it.id == NOTIFICATION_ID }
+        return current?.notification?.extras?.getLong(EXTRA_DATE_JDN, Long.MIN_VALUE) != JalaliDate.now().toJdn()
     }
 
     fun cancelNotification(context: Context) {

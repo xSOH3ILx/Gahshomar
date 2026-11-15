@@ -56,7 +56,9 @@ fun CalendarScreen(
     additionalOccasions: List<Occasion> = emptyList(),
     onAddReminderClick: (JalaliDate) -> Unit = {},
     onReminderClick: (Reminder) -> Unit = {},
-    onDisplayedYearChanged: (Int) -> Unit = {}
+    onDisplayedYearChanged: (Int) -> Unit = {},
+    requestedJdn: Long? = null,
+    onNavigationHandled: () -> Unit = {}
 ) {
     var today by remember { mutableStateOf(JalaliDate.now()) }
     val dateSaver = remember { Saver<JalaliDate, Long>(save = { it.toJdn() }, restore = { JalaliDate.fromJdn(it) }) }
@@ -65,6 +67,16 @@ fun CalendarScreen(
     var totalDragDistance by remember { mutableFloatStateOf(0f) }
     var viewMode by rememberSaveable { mutableIntStateOf(0) } // 0=Month Grid, 1=Agenda View
     var showYearMonthPicker by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(requestedJdn) {
+        requestedJdn?.let {
+            val requested = JalaliDate.fromJdn(it)
+            displayedDate = requested
+            selectedDate = requested
+            viewMode = 0
+            onNavigationHandled()
+        }
+    }
 
     LaunchedEffect(displayedDate.year) { onDisplayedYearChanged(displayedDate.year) }
 

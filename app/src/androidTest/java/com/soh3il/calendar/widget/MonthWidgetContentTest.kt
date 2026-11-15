@@ -2,7 +2,7 @@ package com.soh3il.calendar.widget
 
 import android.content.Context
 import android.graphics.Color
-import android.graphics.drawable.GradientDrawable
+import android.graphics.drawable.ColorDrawable
 import android.widget.FrameLayout
 import android.widget.TextView
 import androidx.test.core.app.ApplicationProvider
@@ -31,8 +31,10 @@ class MonthWidgetContentTest {
             return root.findViewById(context.resources.getIdentifier("month_cell_$index", "id", context.packageName))
         }
         assertEquals("۷", cell(ordinary).text.toString())
-        assertEquals(Color.TRANSPARENT, (cell(ordinary).background as GradientDrawable).color!!.defaultColor)
+        assertEquals(Color.TRANSPARENT, (cell(ordinary).background as ColorDrawable).color)
+        assertEquals(WidgetSurface.palette(context, WidgetOptions()).text, cell(ordinary).currentTextColor)
         val friday = (1..today.daysInMonth).map { JalaliDate(today.year, today.month, it) }.first { it.dayOfWeek == 7 }
-        assertEquals(context.getColor(R.color.widget_holiday_surface), (cell(friday).background as GradientDrawable).color!!.defaultColor)
+        assertEquals(WidgetSurface.palette(context, WidgetOptions()).holiday, cell(friday).currentTextColor)
+        assertTrue(cell(friday).contentDescription.toString().contains("تعطیل"))
     }
 }

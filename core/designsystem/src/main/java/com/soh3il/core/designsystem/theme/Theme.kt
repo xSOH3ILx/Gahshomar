@@ -1,9 +1,11 @@
 package com.soh3il.core.designsystem.theme
 
 import android.app.Activity
+import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
@@ -114,6 +116,15 @@ private val LightColorScheme = lightColorScheme(
     errorContainer = LightHolidayContainer,
     onErrorContainer = LightHolidayText
 )
+
+/** The same semantic palette is available to RemoteViews and Compose previews. */
+fun soh3ilWidgetColorScheme(context: Context, dark: Boolean, dynamic: Boolean): ColorScheme =
+    when {
+        dynamic && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        dark -> DarkColorScheme
+        else -> LightColorScheme
+    }
 
 @Composable
 fun Soh3ilTheme(

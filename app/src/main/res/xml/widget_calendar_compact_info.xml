@@ -8,5 +8,7 @@
     android:minHeight="72dp"
     android:previewLayout="@layout/widget_calendar_compact"
     android:resizeMode="horizontal|vertical"
+    android:configure="com.soh3il.calendar.widget.WidgetConfigurationActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     android:updatePeriodMillis="0"
     android:widgetCategory="home_screen|keyguard" />

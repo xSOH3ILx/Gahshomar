@@ -10,16 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,6 +37,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+
+    private var widgetDestination by mutableStateOf<com.soh3il.calendar.widget.WidgetDestination?>(null)
 
     private var integrationRefreshVersion by mutableStateOf(0)
 
@@ -79,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIncomingIntent(intent: Intent?) {
         if (intent == null) return
+        com.soh3il.calendar.widget.WidgetNavigation.parse(intent)?.let { widgetDestination = it }
         if (
             intent.action == com.soh3il.core.scheduler.PersistentNotificationHelper.ACTION_OPEN_ADD_REMINDER ||
             intent.getBooleanExtra(com.soh3il.core.scheduler.PersistentNotificationHelper.EXTRA_OPEN_ADD_REMINDER, false)
@@ -115,6 +109,11 @@ class MainActivity : ComponentActivity() {
 
         val db = Soh3ilDatabase.getInstance(this)
         if (savedInstanceState == null) handleIncomingIntent(intent)
+        else {
+            @Suppress("DEPRECATION")
+            val pending = savedInstanceState.getParcelable<Intent>("pending_widget_navigation")
+            widgetDestination = com.soh3il.calendar.widget.WidgetNavigation.parse(pending)
+        }
 
         setContent {
             val context = LocalContext.current
@@ -128,12 +127,32 @@ class MainActivity : ComponentActivity() {
                 var showWidgetPicker by rememberSaveable { mutableStateOf(false) }
                 var editingReminderId by rememberSaveable { mutableStateOf<Long?>(null) }
                 var selectedCalendarJdn by rememberSaveable { mutableStateOf(com.soh3il.core.jalali.JalaliDate.now().toJdn()) }
+                var navigationDateJdn by rememberSaveable { mutableStateOf<Long?>(null) }
+                var reminderSession by rememberSaveable { mutableStateOf(0) }
                 val selectedCalendarDate = com.soh3il.core.jalali.JalaliDate.fromJdn(selectedCalendarJdn)
                 val tabState = rememberSaveableStateHolder()
 
                 val remindersState by db.reminderDao().getAllReminders().collectAsState(initial = null)
                 val reminders = remindersState.orEmpty().map { it.toDomain() }
                 val editingReminder = reminders.firstOrNull { it.id == editingReminderId }
+                com.soh3il.calendar.widget.WidgetNavigationPrompt(
+                    destination = widgetDestination, hasDraft = showAddSheet,
+                    ready = widgetDestination?.reminderId == null || remindersState != null,
+                    onCancel = { widgetDestination = null },
+                    onProceed = { destination ->
+                        reminderSession++
+                        currentTab = 0
+                        selectedCalendarJdn = destination.date.toJdn()
+                        navigationDateJdn = destination.date.toJdn()
+                        val target = reminders.firstOrNull { it.id == destination.reminderId }
+                        editingReminderId = target?.id
+                        showAddSheet = destination.add || target != null
+                        if (destination.reminderId != null && target == null) {
+                            android.widget.Toast.makeText(context, "این یادآور دیگر در برنامه نیست", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                        widgetDestination = null
+                    }
+                )
                 var birthdaySolarYear by rememberSaveable { mutableStateOf(com.soh3il.core.jalali.JalaliDate.now().year) }
                 val contactsPermissionGranted = ContextCompat.checkSelfPermission(
                     context,
@@ -159,7 +178,6 @@ class MainActivity : ComponentActivity() {
                 // Update persistent notification, Home Screen Widget, and Live Launcher Icon
                 androidx.compose.runtime.LaunchedEffect(reminders) {
                     com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(context, reminders)
-                    com.soh3il.calendar.widget.CalendarAppWidgetProvider.updateAllWidgets(context)
                     com.soh3il.core.scheduler.LiveIconHelper.updateLiveIcon(context)
                     com.soh3il.core.scheduler.MidnightScheduler.scheduleMidnightAlarm(context)
                 }
@@ -175,6 +193,7 @@ class MainActivity : ComponentActivity() {
                     } else if (openTodayTrigger) {
                         currentTab = 0
                         selectedCalendarJdn = com.soh3il.core.jalali.JalaliDate.now().toJdn()
+                        navigationDateJdn = selectedCalendarJdn
                         openTodayTrigger = false
                     } else if (openConverterTrigger) {
                         currentTab = 1
@@ -185,36 +204,15 @@ class MainActivity : ComponentActivity() {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     bottomBar = {
-                        NavigationBar {
-                            NavigationBarItem(
-                                selected = currentTab == 0,
-                                onClick = { currentTab = 0 },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (currentTab == 0) Icons.Filled.CalendarMonth else Icons.Outlined.CalendarMonth,
-                                        contentDescription = "تقویم"
-                                    )
-                                },
-                                label = { Text("تقویم") }
-                            )
-                            NavigationBarItem(
-                                selected = currentTab == 1,
-                                onClick = { currentTab = 1 },
-                                icon = {
-                                    Icon(
-                                        imageVector = if (currentTab == 1) Icons.Filled.Settings else Icons.Outlined.Settings,
-                                        contentDescription = "تنظیمات"
-                                    )
-                                },
-                                label = { Text("تنظیمات") }
-                            )
-                        }
+                        AppNavigationBar(currentTab, onTabSelected = { currentTab = it })
                     }
                 ) { innerPadding ->
                     androidx.compose.foundation.layout.Box(modifier = Modifier.padding(innerPadding)) {
                         tabState.SaveableStateProvider(currentTab) {
                             when (currentTab) {
                                 0 -> CalendarScreen(
+                                    requestedJdn = navigationDateJdn,
+                                    onNavigationHandled = { navigationDateJdn = null },
                                     onDisplayedYearChanged = { birthdaySolarYear = it },
                                     reminders = reminders,
                                     additionalOccasions = contactBirthdays,
@@ -320,7 +318,7 @@ class MainActivity : ComponentActivity() {
                                 com.soh3il.core.jalali.JalaliDate(it.jalaliYear, it.jalaliMonth, it.jalaliDay)
                             } ?: selectedCalendarDate
 
-                            AddReminderSheet(
+                            androidx.compose.runtime.key(reminderSession) { AddReminderSheet(
                                 initialDate = initialDate,
                                 existingReminder = editingReminder,
                                 onDismiss = {
@@ -333,12 +331,19 @@ class MainActivity : ComponentActivity() {
                                 onDeleteReminder = { reminder ->
                                     coroutineScope.launch(Dispatchers.IO) { ReminderMutations.delete(context, db, reminder) }
                                 }
-                            )
+                            ) }
                         }
                     }
                 }
             }
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        widgetDestination?.let {
+            outState.putParcelable("pending_widget_navigation", com.soh3il.calendar.widget.WidgetNavigation.intent(this, 0, it))
+        }
+        super.onSaveInstanceState(outState)
     }
 
     override fun onResume() {
