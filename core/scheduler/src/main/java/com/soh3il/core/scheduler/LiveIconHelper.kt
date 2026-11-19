@@ -96,42 +96,8 @@ object LiveIconHelper {
      * If 0 or >1 are enabled, immediately heals and resets to valid state.
      */
     fun validateAndHealLauncherAliases(context: Context) {
-        try {
-            val pm = context.packageManager
-            val defaultComponent = ComponentName(context.packageName, DEFAULT_ALIAS_NAME)
-            val allAliases = buildList {
-                add(defaultComponent)
-                for (day in 1..31) {
-                    add(ComponentName(context.packageName, "$ALIAS_NAME_PREFIX$day"))
-                }
-            }
-
-            var enabledCount = 0
-            for (comp in allAliases) {
-                val state = pm.getComponentEnabledSetting(comp)
-                val isCompEnabled = if (comp == defaultComponent) {
-                    state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED ||
-                        state == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT
-                } else {
-                    state == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-                }
-                if (isCompEnabled) {
-                    enabledCount++
-                }
-            }
-
-            if (enabledCount != 1) {
-                updateLiveIcon(context)
-            }
-        } catch (_: Exception) {
-            try {
-                // Absolute fallback: ensure default launcher alias is enabled
-                context.packageManager.setComponentEnabledSetting(
-                    ComponentName(context.packageName, DEFAULT_ALIAS_NAME),
-                    PackageManager.COMPONENT_ENABLED_STATE_ENABLED,
-                    PackageManager.DONT_KILL_APP
-                )
-            } catch (_: Exception) {}
-        }
+        // An old day alias may be the only enabled alias, yet still be stale.
+        // updateLiveIcon also checks the user's preference and changes aliases enable-first.
+        updateLiveIcon(context)
     }
 }

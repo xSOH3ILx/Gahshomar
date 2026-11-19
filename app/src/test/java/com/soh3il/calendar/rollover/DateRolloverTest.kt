@@ -23,6 +23,7 @@ import android.content.Intent
 import com.soh3il.core.jalali.JalaliDate
 import com.soh3il.core.scheduler.MidnightReceiver
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.async
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 
@@ -114,4 +115,44 @@ class DateRolloverTest {
         for (day in 1..31) assertTrue("Missing status icon for day $day",
             context.resources.getIdentifier("ic_stat_day_$day", "drawable", context.packageName) != 0)
     }
+    @Test fun slowOlderRolloverCannotOverwriteNewerReminderSummary() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+        val today = JalaliDate.now()
+        val oldReminder = com.soh3il.core.model.Reminder(id = 991, title = "old",
+            jalaliYear = today.year, jalaliMonth = today.month, jalaliDay = today.day, hour = 10, minute = 0)
+        val started = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val release = kotlinx.coroutines.CompletableDeferred<Unit>()
+        val work = async(kotlinx.coroutines.Dispatchers.Default) {
+            MidnightReceiver.refreshNow(context, MidnightReceiver.ACTION_MIDNIGHT_TICK) {
+                started.complete(Unit); release.await(); listOf(oldReminder)
+            }
+        }
+        started.await()
+        PersistentNotificationHelper.updateNotification(context, emptyList())
+        release.complete(Unit)
+        work.await()
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val n = manager.activeNotifications.single { it.id == 2001 }.notification
+        val lines = n.extras.getCharSequenceArray(Notification.EXTRA_TEXT_LINES).orEmpty().joinToString(" ")
+        assertTrue(lines.contains("بدون یادآور"))
+    }
+
+    @Test fun startupHealsAStaleButSinglyEnabledLiveIcon() {
+        val context = RuntimeEnvironment.getApplication()
+        SystemClock.setCurrentTimeMillis(JalaliDate(1405, 8, 24).toEpochMillis(10))
+        UserPreferences.setLiveIconEnabled(context, true)
+        val pm = context.packageManager
+        val old = android.content.ComponentName(context.packageName, "com.soh3il.calendar.Day23")
+        val current = android.content.ComponentName(context.packageName, "com.soh3il.calendar.Day24")
+        val default = android.content.ComponentName(context.packageName, "com.soh3il.calendar.DefaultLauncherAlias")
+        pm.setComponentEnabledSetting(old, android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+        pm.setComponentEnabledSetting(current, android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+        pm.setComponentEnabledSetting(default, android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, android.content.pm.PackageManager.DONT_KILL_APP)
+        com.soh3il.core.scheduler.LiveIconHelper.validateAndHealLauncherAliases(context)
+        assertEquals(android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, pm.getComponentEnabledSetting(current))
+        assertEquals(android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, pm.getComponentEnabledSetting(old))
+    }
+
 }

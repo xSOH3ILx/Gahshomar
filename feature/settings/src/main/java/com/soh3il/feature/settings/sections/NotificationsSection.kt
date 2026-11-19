@@ -129,7 +129,7 @@ fun NotificationsSection(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
-                        text = "نمایش تاریخ و رویدادهای غیرحساس در اعلان دائمی صفحه‌قفل",
+                        text = "نمایش تاریخ و رویدادهای غیرحساس در صفحه‌قفل؛ در حالت خاموش، آیکون روز نیز ثابت می‌شود.",
                         fontSize = 11.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         lineHeight = 17.sp

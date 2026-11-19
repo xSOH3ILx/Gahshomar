@@ -43,7 +43,7 @@ class IcsParserTest {
         val icsText = IcsParser.exportToIcsString(reminders)
         assertTrue(icsText.contains("BEGIN:VCALENDAR"))
         assertTrue(icsText.contains("SUMMARY:جلسه کاری"))
-        assertTrue(icsText.contains("RRULE:FREQ=MONTHLY;INTERVAL=1"))
+        assertTrue(!icsText.contains("RRULE:FREQ=MONTHLY;INTERVAL=1"))
         assertTrue(icsText.contains("SUMMARY:پرداخت شهریه"))
         assertTrue(icsText.contains("END:VCALENDAR"))
 

@@ -19,10 +19,13 @@ internal object IcsRecurrenceCodec {
             RecurrenceType.WEEKLY -> {
                 val days = rem.recurrence.daysOfWeek.sorted().mapNotNull { PERSIAN_TO_ICS_DAY[it] }
                 val byDay = if (days.isEmpty()) "" else ";BYDAY=${days.joinToString(",")}"
-                "RRULE:FREQ=WEEKLY;INTERVAL=$interval$byDay"
+                val weekStart = rem.recurrence.weekStart ?: JalaliDate(rem.jalaliYear, rem.jalaliMonth, rem.jalaliDay).dayOfWeek
+                "RRULE:FREQ=WEEKLY;INTERVAL=$interval$byDay;WKST=${PERSIAN_TO_ICS_DAY.getValue(weekStart)}"
             }
-            RecurrenceType.MONTHLY_JALALI, RecurrenceType.MONTHLY_GREGORIAN -> "RRULE:FREQ=MONTHLY;INTERVAL=$interval"
-            RecurrenceType.YEARLY_JALALI, RecurrenceType.YEARLY_GREGORIAN -> "RRULE:FREQ=YEARLY;INTERVAL=$interval"
+            // A Gregorian RRULE would silently move solar occurrences in other apps.
+            RecurrenceType.MONTHLY_JALALI, RecurrenceType.YEARLY_JALALI -> null
+            RecurrenceType.MONTHLY_GREGORIAN -> "RRULE:FREQ=MONTHLY;INTERVAL=$interval"
+            RecurrenceType.YEARLY_GREGORIAN -> "RRULE:FREQ=YEARLY;INTERVAL=$interval"
             RecurrenceType.NONE -> null
         }
     }
@@ -30,14 +33,18 @@ internal object IcsRecurrenceCodec {
     fun xRecurrence(rem: Reminder): String {
         val days = rem.recurrence.daysOfWeek.sorted().joinToString(",")
         val day = rem.recurrence.dayOfMonth?.toString().orEmpty()
-        return "${rem.recurrence.type.name};INTERVAL=${rem.recurrence.interval.coerceAtLeast(1)};DAY=$day;WEEKDAYS=$days;POLICY=${rem.recurrence.shortMonthPolicy.name}"
+        return "${rem.recurrence.type.name};INTERVAL=${rem.recurrence.interval.coerceAtLeast(1)};DAY=$day;WEEKDAYS=$days;POLICY=${rem.recurrence.shortMonthPolicy.name};WEEKSTART=${rem.recurrence.weekStart ?: ""}"
     }
 
-    fun parseXRecurrence(value: String): RecurrenceRule {
+    fun parseXRecurrence(value: String, strict: Boolean = false): RecurrenceRule {
         val parts = value.split(";")
-        val type = runCatching { RecurrenceType.valueOf(parts.first()) }.getOrDefault(RecurrenceType.NONE)
+        val parsedType = runCatching { RecurrenceType.valueOf(parts.first()) }.getOrNull()
+        if (strict) require(parsedType != null) { "نوع تکرار SOH3IL ناشناخته است" }
+        val type = parsedType ?: RecurrenceType.NONE
         fun field(name: String): String? = parts.firstOrNull { it.startsWith("$name=") }?.substringAfter("=")
-        val interval = field("INTERVAL")?.toIntOrNull()?.coerceAtLeast(1) ?: 1
+        val intervalValue = field("INTERVAL")
+        if (strict && intervalValue != null) require((intervalValue.toIntOrNull() ?: 0) in 1..999) { "بازهٔ تکرار معتبر نیست" }
+        val interval = intervalValue?.toIntOrNull()?.coerceAtLeast(1) ?: 1
         val dayOfMonth = field("DAY")?.toIntOrNull()
         require(dayOfMonth == null || dayOfMonth in 1..31) { "روز تکرار تقویم معتبر نیست" }
         val daysOfWeek = field("WEEKDAYS")
@@ -49,11 +56,25 @@ internal object IcsRecurrenceCodec {
         val policy = field("POLICY")?.let {
             runCatching { ShortMonthPolicy.valueOf(it) }.getOrNull()
         } ?: ShortMonthPolicy.SNAP_TO_LAST_DAY
-        return RecurrenceRule(type, interval, dayOfMonth, daysOfWeek, policy)
+        val weekStart = field("WEEKSTART")?.takeIf { it.isNotBlank() }?.toIntOrNull()
+        require(weekStart == null || weekStart in 1..7) { "شروع هفته معتبر نیست" }
+        require(daysOfWeek.all { it in 1..7 }) { "روز هفته معتبر نیست" }
+        return RecurrenceRule(type, interval, dayOfMonth, daysOfWeek, policy, weekStart)
     }
 
-    fun parseStandardRrule(rrule: String): RecurrenceRule {
+    fun parseStandardRrule(rrule: String, strict: Boolean = false): RecurrenceRule {
         val normalized = rrule.uppercase(Locale.ROOT)
+        if (strict && normalized.isNotBlank()) {
+            val parts = normalized.split(";").map { it.substringBefore("=") to it.substringAfter("=", "") }
+            require(parts.all { it.first in setOf("FREQ", "INTERVAL", "BYDAY", "WKST") && it.second.isNotBlank() } &&
+                parts.map { it.first }.distinct().size == parts.size) { "این قانون تکرار ICS به‌طور کامل پشتیبانی نمی‌شود" }
+            val freq = parts.firstOrNull { it.first == "FREQ" }?.second
+            require(freq in setOf("DAILY", "WEEKLY", "MONTHLY", "YEARLY")) { "نوع تکرار ICS پشتیبانی نمی‌شود" }
+            val byDay = parts.firstOrNull { it.first == "BYDAY" }?.second
+            require(byDay == null || (freq == "WEEKLY" && byDay.split(",").all { it in ICS_DAY_TO_PERSIAN })) { "روزهای تکرار ICS پشتیبانی نمی‌شوند" }
+            val interval = parts.firstOrNull { it.first == "INTERVAL" }?.second
+            require(interval == null || (interval.toIntOrNull() ?: 0) in 1..999) { "بازهٔ تکرار ICS معتبر نیست" }
+        }
         var recType = RecurrenceType.NONE
         var recInterval = 1
         if (normalized.contains("FREQ=DAILY", ignoreCase = true)) {
@@ -83,7 +104,11 @@ internal object IcsRecurrenceCodec {
             type = recType,
             interval = recInterval.coerceAtLeast(1),
             daysOfWeek = daysOfWeek,
-            shortMonthPolicy = ShortMonthPolicy.SKIP_MONTH
+            shortMonthPolicy = ShortMonthPolicy.SKIP_MONTH,
+            weekStart = if (recType == RecurrenceType.WEEKLY) {
+                val key = normalized.split(";").firstOrNull { it.startsWith("WKST=") }?.substringAfter("=") ?: "MO"
+                requireNotNull(ICS_DAY_TO_PERSIAN[key]) { "آغاز هفته معتبر نیست" }
+            } else null
         )
     }
 

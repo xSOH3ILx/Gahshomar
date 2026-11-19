@@ -22,6 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.CancellationException
 import com.soh3il.core.database.Soh3ilDatabase
 import com.soh3il.core.database.preferences.UserPreferences
 import com.soh3il.core.designsystem.theme.Soh3ilTheme
@@ -30,7 +32,7 @@ import com.soh3il.feature.calendar.CalendarScreen
 import com.soh3il.feature.reminder.AddReminderSheet
 import android.content.Intent
 import com.soh3il.feature.settings.SettingsScreen
-import com.soh3il.calendar.integrations.CalendarProviderSync
+import com.soh3il.calendar.integrations.rememberCalendarSyncAction
 import com.soh3il.calendar.integrations.rememberContactBirthdays
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -64,6 +66,8 @@ class MainActivity : ComponentActivity() {
                     "بدون مجوز اعلان، یادآورها نمایش داده نمی‌شوند و انجام‌شده حساب نمی‌شوند.",
                     android.widget.Toast.LENGTH_LONG
                 ).show()
+            } else {
+                recoverMissedAlarms()
             }
         }
 
@@ -129,6 +133,10 @@ class MainActivity : ComponentActivity() {
                 val coroutineScope = rememberCoroutineScope()
                 var currentTab by rememberSaveable { mutableStateOf(0) } // 0=Calendar, 1=Settings
                 var showAddSheet by rememberSaveable { mutableStateOf(false) }
+                var savingReminder by remember { mutableStateOf(false) }
+                val syncCalendar = rememberCalendarSyncAction(context, db) {
+                    requestCalendarPermissions.launch(arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
+                }
                 var showWidgetPicker by rememberSaveable { mutableStateOf(false) }
                 var editingReminderId by rememberSaveable { mutableStateOf<Long?>(null) }
                 var selectedCalendarJdn by rememberSaveable { mutableStateOf(com.soh3il.core.jalali.JalaliDate.now().toJdn()) }
@@ -176,8 +184,9 @@ class MainActivity : ComponentActivity() {
                 val currentVersion = remember { installedVersion(context) }
 
                 // Update persistent notification, Home Screen Widget, and Live Launcher Icon
-                androidx.compose.runtime.LaunchedEffect(reminders) {
-                    com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(context, reminders)
+                androidx.compose.runtime.LaunchedEffect(remindersState) {
+                    if (remindersState == null) com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(context)
+                    else com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(context, reminders)
                     com.soh3il.core.scheduler.LiveIconHelper.updateLiveIcon(context)
                     com.soh3il.core.scheduler.MidnightScheduler.scheduleMidnightAlarm(context)
                 }
@@ -251,16 +260,17 @@ class MainActivity : ComponentActivity() {
                                         com.soh3il.calendar.widget.CalendarAppWidgetProvider.requestUpdate(this@MainActivity)
                                     },
                                     onExportIcsClick = {
-                                        com.soh3il.core.scheduler.IcsHelper.shareIcsFile(this@MainActivity, reminders)
-                                        android.widget.Toast.makeText(
-                                            this@MainActivity,
-                                            "${reminders.size.toPersianDigits()} یادآور برای صدور آماده شد",
-                                            android.widget.Toast.LENGTH_SHORT
-                                        ).show()
+                                        try {
+                                            com.soh3il.core.scheduler.IcsHelper.shareIcsFile(this@MainActivity, reminders)
+                                        } catch (error: Exception) {
+                                            android.widget.Toast.makeText(this@MainActivity, "فایل خروجی ساخته نشد؛ اطلاعات یادآورها را بررسی کنید.", android.widget.Toast.LENGTH_LONG).show()
+                                        }
                                     },
                                     onImportIcsUri = { uri ->
                                         coroutineScope.launch(Dispatchers.IO) {
-                                            val result = ReminderMutations.importIcs(context, db, uri)
+                                            val result = try { ReminderMutations.importIcs(context, db, uri) }
+                                            catch (error: CancellationException) { throw error }
+                                            catch (error: Exception) { Result.failure(error) }
                                             withContext(Dispatchers.Main) {
                                                 val message = result.fold(
                                                     onSuccess = { (total, added) ->
@@ -269,33 +279,14 @@ class MainActivity : ComponentActivity() {
                                                     },
                                                     onFailure = { error ->
                                                         if (error is IllegalArgumentException) error.message ?: "فایل تقویم معتبر نیست"
-                                                        else "فایل تقویم خوانده نشد؛ دسترسی به فایل را بررسی کنید."
+                                                        else "ورود کامل نشد؛ ممکن است بعضی موارد قبلاً ثبت شده باشند. فایل و یادآورها را بررسی کنید."
                                                     }
                                                 )
                                                 android.widget.Toast.makeText(this@MainActivity, message, android.widget.Toast.LENGTH_LONG).show()
                                             }
                                         }
                                     },
-                                    onSyncCalendarClick = {
-                                        val hasCalendarPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALENDAR) == PackageManager.PERMISSION_GRANTED &&
-                                            ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CALENDAR) == PackageManager.PERMISSION_GRANTED
-                                        if (!hasCalendarPermission) {
-                                            requestCalendarPermissions.launch(
-                                                arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
-                                            )
-                                        } else {
-                                            coroutineScope.launch(Dispatchers.IO) {
-                                                val result = CalendarProviderSync.syncReminders(context, reminders)
-                                                withContext(Dispatchers.Main) {
-                                                    val message = result.fold(
-                                                        onSuccess = { count -> "${count.toPersianDigits()} یادآور با تقویم دستگاه همگام شد" },
-                                                        onFailure = { it.message ?: "همگام‌سازی تقویم انجام نشد" }
-                                                    )
-                                                    android.widget.Toast.makeText(this@MainActivity, message, android.widget.Toast.LENGTH_LONG).show()
-                                                }
-                                            }
-                                        }
-                                    },
+                                    onSyncCalendarClick = syncCalendar,
                                     contactBirthdaysEnabled = contactBirthdaysEnabled,
                                     contactsPermissionGranted = contactsPermissionGranted,
                                     onContactBirthdaysToggled = { enabled ->
@@ -327,10 +318,36 @@ class MainActivity : ComponentActivity() {
                                     editingReminderId = null
                                 },
                                 onSaveReminder = { reminder ->
-                                    coroutineScope.launch(Dispatchers.IO) { ReminderMutations.save(context, db, reminder) }
+                                    if (!savingReminder) {
+                                        savingReminder = true
+                                        coroutineScope.launch {
+                                            try {
+                                                withContext(Dispatchers.IO) { ReminderMutations.save(context, db, reminder) }
+                                                showAddSheet = false
+                                                editingReminderId = null
+                                            } catch (error: CancellationException) {
+                                                throw error
+                                            } catch (error: Exception) {
+                                                android.widget.Toast.makeText(context, "ذخیره یا زمان‌بندی انجام نشد؛ دوباره تلاش کنید.", android.widget.Toast.LENGTH_LONG).show()
+                                            } finally { savingReminder = false }
+                                        }
+                                    }
                                 },
+                                isSaving = savingReminder,
                                 onDeleteReminder = { reminder ->
-                                    coroutineScope.launch(Dispatchers.IO) { ReminderMutations.delete(context, db, reminder) }
+                                    if (!savingReminder) {
+                                        savingReminder = true
+                                        coroutineScope.launch {
+                                            try {
+                                                withContext(Dispatchers.IO) { ReminderMutations.delete(context, db, reminder) }
+                                                showAddSheet = false
+                                                editingReminderId = null
+                                            } catch (error: CancellationException) { throw error }
+                                            catch (error: Exception) {
+                                                android.widget.Toast.makeText(context, "حذف کامل نشد؛ یادآور را بررسی کنید.", android.widget.Toast.LENGTH_LONG).show()
+                                            } finally { savingReminder = false }
+                                        }
+                                    }
                                 }
                             ) }
                         }
@@ -349,9 +366,18 @@ class MainActivity : ComponentActivity() {
         super.onSaveInstanceState(outState)
     }
 
+    private fun recoverMissedAlarms() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try { com.soh3il.core.scheduler.AlarmScheduler.recoverMissed(applicationContext) }
+            catch (error: CancellationException) { throw error }
+            catch (error: Exception) { android.util.Log.e("AlarmRecovery", "Alarm recovery failed: ${error.javaClass.simpleName}") }
+        }
+    }
+
     override fun onResume() {
         super.onResume()
         integrationRefreshVersion++
+        recoverMissedAlarms()
         com.soh3il.core.scheduler.LiveIconHelper.updateLiveIcon(this)
         com.soh3il.core.scheduler.MidnightScheduler.scheduleMidnightAlarm(this)
         com.soh3il.calendar.widget.CalendarAppWidgetProvider.requestUpdate(this)

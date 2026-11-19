@@ -149,4 +149,38 @@ class WidgetRenderingLocalTest {
         }
         assertTrue(File(folder, "MONTH-LIGHT.png").length() > 0)
     }
+    @Test fun missingLunarDataIsVisibleOnMonthAndWeek() {
+        val context = context()
+        val future = JalaliDate(1407, 1, 2)
+        val snapshot = WidgetSnapshot(future.toEpochMillis(10), emptyList())
+        for ((kind, id) in listOf(WidgetKind.MONTH to R.id.month_warning, WidgetKind.WEEK to R.id.week_warning)) {
+            val root = WidgetRenderer.render(context, kind, 123, snapshot, SizeF(400f, 300f), WidgetOptions())
+                .apply(context, FrameLayout(context))
+            val warning = root.findViewById<TextView>(id)
+            assertEquals(View.VISIBLE, warning.visibility)
+            assertTrue(warning.text.toString().contains("قمری"))
+        }
+    }
+    @Test fun dailyWarningDoesNotDisappearWhenThereIsAnotherOccasion() {
+        val context = context()
+        val date = JalaliDate(1407, 1, 1)
+        val root = WidgetRenderer.render(context, WidgetKind.DAILY, 123, WidgetSnapshot(date.toEpochMillis(10), emptyList()), SizeF(400f, 300f), WidgetOptions()).apply(context, FrameLayout(context))
+        val text = root.findViewById<TextView>(R.id.widget_occasion).text.toString()
+        assertTrue(text.contains("قمری"))
+        assertTrue(text.contains("نوروز"))
+    }
+
+    @Test fun lunarWarningFitsTheWidgetWithLargeText() {
+        val context = context(1.5f)
+        val date = JalaliDate(1407, 1, 2)
+        for ((kind, id) in listOf(WidgetKind.MONTH to R.id.month_warning, WidgetKind.WEEK to R.id.week_warning)) {
+            val root = WidgetRenderer.render(context, kind, 123, WidgetSnapshot(date.toEpochMillis(10), emptyList()), SizeF(250f, 180f), WidgetOptions(textScale = 1.3f)).apply(context, FrameLayout(context))
+            val density = context.resources.displayMetrics.density
+            root.measure(View.MeasureSpec.makeMeasureSpec((250 * density).toInt(), View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec((180 * density).toInt(), View.MeasureSpec.EXACTLY))
+            root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+            val warning = root.findViewById<TextView>(id)
+            assertTrue("warning clipped for $kind", warning.layout.height <= warning.height - warning.compoundPaddingTop - warning.compoundPaddingBottom)
+        }
+    }
+
 }

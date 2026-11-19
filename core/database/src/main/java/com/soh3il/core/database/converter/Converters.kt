@@ -12,7 +12,8 @@ class DatabaseConverters {
     @TypeConverter
     fun fromRecurrenceRule(rule: RecurrenceRule): String {
         val days = rule.daysOfWeek.joinToString(",")
-        return "${rule.type.name}|${rule.interval}|${rule.dayOfMonth ?: ""}|$days|${rule.shortMonthPolicy.name}"
+        val base = "${rule.type.name}|${rule.interval}|${rule.dayOfMonth ?: ""}|$days|${rule.shortMonthPolicy.name}"
+        return rule.weekStart?.let { "$base|$it" } ?: base
     }
 
     @TypeConverter
@@ -37,7 +38,8 @@ class DatabaseConverters {
             interval = interval,
             dayOfMonth = dayOfMonth,
             daysOfWeek = daysOfWeek,
-            shortMonthPolicy = policy
+            shortMonthPolicy = policy,
+            weekStart = parts.getOrNull(5)?.toIntOrNull()?.takeIf { it in 1..7 }
         )
     }
 

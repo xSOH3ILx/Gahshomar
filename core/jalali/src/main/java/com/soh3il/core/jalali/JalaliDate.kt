@@ -92,7 +92,7 @@ data class JalaliDate(
         val targetDay = if (day > maxDays) {
             when (policy) {
                 ShortMonthPolicy.SNAP_TO_LAST_DAY -> maxDays
-                ShortMonthPolicy.SKIP_MONTH -> return plusMonths(months + 1, policy)
+                ShortMonthPolicy.SKIP_MONTH -> return plusMonths(months + if (months < 0) -1 else 1, policy)
             }
         } else {
             day
@@ -107,7 +107,7 @@ data class JalaliDate(
         val targetDay = if (day > maxDays) {
             when (policy) {
                 ShortMonthPolicy.SNAP_TO_LAST_DAY -> maxDays
-                ShortMonthPolicy.SKIP_MONTH -> maxDays
+                ShortMonthPolicy.SKIP_MONTH -> return plusYears(years + if (years < 0) -1 else 1, policy)
             }
         } else {
             day

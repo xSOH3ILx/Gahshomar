@@ -69,7 +69,9 @@ object JalaliRecurrenceEngine {
                     if (dateToCheck.toJdn() < baseDate.toJdn()) continue
                     if (dateToCheck.dayOfWeek in targetDaysOfWeek) {
                         val daysFromBase = dateToCheck.toJdn() - baseDate.toJdn()
-                        val weeksFromBase = (daysFromBase / 7).toInt()
+                        val weekStart = reminder.recurrence.weekStart ?: baseDate.dayOfWeek
+                        val anchorOffset = (baseDate.dayOfWeek - weekStart + 7) % 7
+                        val weeksFromBase = ((daysFromBase + anchorOffset) / 7).toInt()
                         if (interval == 1 || (weeksFromBase >= 0 && weeksFromBase % interval == 0)) {
                             val epoch = dateToCheck.toEpochMillis(reminder.hour, reminder.minute, 0, zoneId)
                             if (epoch > referenceEpochMillis) {
@@ -127,7 +129,7 @@ object JalaliRecurrenceEngine {
             if (candidateDay != null) {
                 val candidateEpoch = JalaliDate(todayJalali.year, todayJalali.month, candidateDay)
                     .toEpochMillis(reminder.hour, reminder.minute, 0, zoneId)
-                if (candidateEpoch > referenceEpochMillis) {
+                if (candidateEpoch > referenceEpochMillis && JalaliDate(todayJalali.year, todayJalali.month, candidateDay) >= baseDate) {
                     return candidateEpoch
                 }
             }
@@ -141,7 +143,7 @@ object JalaliRecurrenceEngine {
             -diffMonths
         }
 
-        while (true) {
+        repeat(4_801) {
             val nextTotalMonths = currentTotalMonths + step
             val nextYear = nextTotalMonths / 12
             val nextMonth = (nextTotalMonths % 12) + 1
@@ -151,12 +153,13 @@ object JalaliRecurrenceEngine {
             if (resolvedDay != null) {
                 val nextEpoch = JalaliDate(nextYear, nextMonth, resolvedDay)
                     .toEpochMillis(reminder.hour, reminder.minute, 0, zoneId)
-                if (nextEpoch > referenceEpochMillis) {
+                if (nextEpoch > referenceEpochMillis && JalaliDate(nextYear, nextMonth, resolvedDay) >= baseDate) {
                     return nextEpoch
                 }
             }
             step += interval
         }
+        throw IllegalArgumentException("قاعدهٔ تکرار خورشیدی تاریخ معتبری ندارد")
     }
 
     private fun calculateNextYearlyJalaliTrigger(
@@ -178,7 +181,7 @@ object JalaliRecurrenceEngine {
             if (effectiveDay != null) {
                 val thisYearEpoch = JalaliDate(targetYear, targetMonth, effectiveDay)
                     .toEpochMillis(reminder.hour, reminder.minute, 0, zoneId)
-                if (thisYearEpoch > referenceEpochMillis) {
+                if (thisYearEpoch > referenceEpochMillis && JalaliDate(targetYear, targetMonth, effectiveDay) >= baseDate) {
                     return thisYearEpoch
                 }
             }
@@ -192,18 +195,19 @@ object JalaliRecurrenceEngine {
         }
 
         var nextYear = targetYear + step
-        while (true) {
+        repeat(4_801) {
             val maxDaysNextYear = JalaliDate.daysInMonth(nextYear, targetMonth)
             val effectiveDay = resolveDayForMonth(anchorDay, maxDaysNextYear, reminder.recurrence.shortMonthPolicy)
             if (effectiveDay != null) {
                 val nextEpoch = JalaliDate(nextYear, targetMonth, effectiveDay)
                     .toEpochMillis(reminder.hour, reminder.minute, 0, zoneId)
-                if (nextEpoch > referenceEpochMillis) {
+                if (nextEpoch > referenceEpochMillis && JalaliDate(nextYear, targetMonth, effectiveDay) >= baseDate) {
                     return nextEpoch
                 }
             }
             nextYear += interval
         }
+        throw IllegalArgumentException("قاعدهٔ تکرار خورشیدی تاریخ معتبری ندارد")
     }
 
     private fun resolveDayForMonth(
@@ -219,6 +223,14 @@ object JalaliRecurrenceEngine {
                 ShortMonthPolicy.SKIP_MONTH -> null
             }
         }
+    }
+
+    /** Returns the next future pre-alarm, even when the offset exceeds the recurrence interval. */
+    fun calculateNextPreTrigger(reminder: Reminder, offsetMinutes: Long, now: Long): Long? {
+        require(offsetMinutes > 0 && offsetMinutes <= Int.MAX_VALUE.toLong()) { "بازهٔ پیش‌یادآور معتبر نیست" }
+        val offset = Math.multiplyExact(offsetMinutes, 60_000L)
+        val nextMain = calculateNextTrigger(reminder, Math.addExact(now, offset)) ?: return null
+        return Math.subtractExact(nextMain, offset)
     }
 
     /**
@@ -266,7 +278,9 @@ object JalaliRecurrenceEngine {
                 if (date.dayOfWeek !in targetDaysOfWeek) return false
 
                 val daysDiff = date.toJdn() - baseDate.toJdn()
-                val weeksDiff = daysDiff / 7
+                val weekStart = reminder.recurrence.weekStart ?: baseDate.dayOfWeek
+                val anchorOffset = (baseDate.dayOfWeek - weekStart + 7) % 7
+                val weeksDiff = (daysDiff + anchorOffset) / 7
                 weeksDiff >= 0 && (interval == 1 || weeksDiff % interval == 0L)
             }
 

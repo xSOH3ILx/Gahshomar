@@ -68,6 +68,10 @@ fun CalendarScreen(
     var viewMode by rememberSaveable { mutableIntStateOf(0) } // 0=Month Grid, 1=Agenda View
     var showYearMonthPicker by rememberSaveable { mutableStateOf(false) }
 
+    fun selectDisplayedMonth() {
+        selectedDate = JalaliDate(displayedDate.year, displayedDate.month, minOf(selectedDate.day, displayedDate.daysInMonth))
+    }
+
     LaunchedEffect(requestedJdn) {
         requestedJdn?.let {
             val requested = JalaliDate.fromJdn(it)
@@ -151,8 +155,8 @@ fun CalendarScreen(
                 // 1. Month Header (Centered Month, Left=Previous, Right=Next)
                 CalendarHeader(
                     currentDate = displayedDate,
-                    onPreviousMonth = { displayedDate = displayedDate.plusMonths(-1) },
-                    onNextMonth = { displayedDate = displayedDate.plusMonths(1) },
+                    onPreviousMonth = { displayedDate = displayedDate.plusMonths(-1); selectDisplayedMonth() },
+                    onNextMonth = { displayedDate = displayedDate.plusMonths(1); selectDisplayedMonth() },
                     onTodayClick = {
                         displayedDate = today
                         selectedDate = today
@@ -193,8 +197,10 @@ fun CalendarScreen(
                                     // Negative drag (<0) -> plusMonths(-1)
                                     if (totalDragDistance > threshold) {
                                         displayedDate = displayedDate.plusMonths(1)
+                                        selectDisplayedMonth()
                                     } else if (totalDragDistance < -threshold) {
                                         displayedDate = displayedDate.plusMonths(-1)
+                                        selectDisplayedMonth()
                                     }
                                 },
                                 onHorizontalDrag = { _, dragAmount ->

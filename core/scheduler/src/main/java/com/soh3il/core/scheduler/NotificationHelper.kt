@@ -88,6 +88,11 @@ object NotificationHelper {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
+    fun canPostReminders(context: Context): Boolean {
+        createNotificationChannel(context)
+        return canPostNotifications(context, channelId(context))
+    }
+
     fun updateNotificationChannelSound(context: Context, newSoundUri: Uri?) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val previous = manager.getNotificationChannel(channelId(context))

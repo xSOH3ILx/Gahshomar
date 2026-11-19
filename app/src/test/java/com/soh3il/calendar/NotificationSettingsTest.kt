@@ -64,4 +64,17 @@ class NotificationSettingsTest {
         val fixed = manager.activeNotifications.single { it.id == 2001 }.notification.smallIcon.resId
         assertNotEquals(dynamic, fixed)
     }
+    @Test fun lockscreenPublicVersionDoesNotExposeDateWhenDisabled() {
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+        UserPreferences.setLockscreenCalendarEnabled(context, false)
+        PersistentNotificationHelper.updateNotification(context, emptyList())
+        val notification = manager.activeNotifications.single { it.id == 2001 }.notification
+        assertEquals(android.app.Notification.VISIBILITY_PRIVATE, notification.visibility)
+        assertEquals(com.soh3il.core.designsystem.R.drawable.ic_stat_calendar, notification.smallIcon.resId)
+        assertEquals(com.soh3il.core.designsystem.R.drawable.ic_stat_calendar, notification.publicVersion.smallIcon.resId)
+        assertEquals("SOH3IL", notification.publicVersion.extras.getCharSequence("android.title").toString())
+        assertEquals("محتوای تقویم پنهان است", notification.publicVersion.extras.getCharSequence("android.text").toString())
+    }
+
 }

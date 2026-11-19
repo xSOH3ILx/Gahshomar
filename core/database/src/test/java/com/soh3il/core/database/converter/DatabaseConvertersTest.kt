@@ -23,4 +23,9 @@ class DatabaseConvertersTest {
             assertEquals(rule, converters.toRecurrenceRule(converters.fromRecurrenceRule(rule)))
         }
     }
+    @Test fun weeklyBoundarySurvivesDatabaseRoundTrip() {
+        val rule = RecurrenceRule(type = RecurrenceType.WEEKLY, interval = 2, daysOfWeek = setOf(3, 5), weekStart = 3)
+        assertEquals(rule, converters.toRecurrenceRule(converters.fromRecurrenceRule(rule)))
+    }
+
 }

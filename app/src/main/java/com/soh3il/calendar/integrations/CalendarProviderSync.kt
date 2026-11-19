@@ -72,7 +72,8 @@ object CalendarProviderSync {
                 } else {
                     context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
                 }
-                if (uri != null) synced++
+                if (uri == null) throw IOException("رویداد در تقویم دستگاه ثبت نشد؛ دوباره تلاش کنید.")
+                synced++
             }
             Result.success(synced)
         } catch (error: SecurityException) {
@@ -85,7 +86,7 @@ object CalendarProviderSync {
     }
 
     @SuppressLint("Recycle")
-    private fun findWritableCalendarId(context: Context): Long? {
+    internal fun findWritableCalendarId(context: Context): Long? {
         val projection = arrayOf(CalendarContract.Calendars._ID, CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL)
         context.contentResolver.query(
             CalendarContract.Calendars.CONTENT_URI,
@@ -101,15 +102,25 @@ object CalendarProviderSync {
 
     @SuppressLint("Recycle")
     private fun findEventId(context: Context, calendarId: Long, marker: String): Long? {
-        context.contentResolver.query(
+        val cursor = context.contentResolver.query(
             CalendarContract.Events.CONTENT_URI,
-            arrayOf(CalendarContract.Events._ID),
+            arrayOf(CalendarContract.Events._ID, CalendarContract.Events.DESCRIPTION),
             "${CalendarContract.Events.CALENDAR_ID} = ? AND ${CalendarContract.Events.DESCRIPTION} LIKE ?",
             arrayOf(calendarId.toString(), "%$marker%"),
             null
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) return cursor.getLong(0)
+        ) ?: throw IOException("خواندن رویدادهای تقویم دستگاه ممکن نشد؛ دوباره تلاش کنید.")
+        var match: Long? = null
+        cursor.use {
+            while (it.moveToNext()) {
+                val description = it.getString(1).orEmpty()
+                if (description.substringAfterLast('\n') == marker) {
+                    if (match != null) throw IOException("چند رویداد با نشانگر یکسان وجود دارد؛ تقویم دستگاه را بررسی کنید.")
+                    match = it.getLong(0)
+                } else if (description.contains(marker)) {
+                    throw IOException("نشانگر رویداد تغییر کرده است؛ تقویم دستگاه را بررسی کنید.")
+                }
+            }
         }
-        return null
+        return match
     }
 }

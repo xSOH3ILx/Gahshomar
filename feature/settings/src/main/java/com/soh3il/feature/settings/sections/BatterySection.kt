@@ -1,5 +1,7 @@
 package com.soh3il.feature.settings.sections
 
+import android.app.AlarmManager
+import android.os.Build
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -63,9 +65,11 @@ fun BatterySection(
     isIgnoringBattery: Boolean,
     onShowAutoStartDialog: () -> Unit
 ) {
+    val manager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+    val exactAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || manager?.canScheduleExactAlarms() == true
     SettingsSectionHeader(
         title = "سیستم و پایداری زنگ‌ها",
-        subtitle = "جلوگیری از بسته شدن برنامه در پس‌زمینه برای دقت ۱۰۰٪ یادآورها",
+        subtitle = "کاهش محدودیت‌های پس‌زمینه؛ زمان تحویل به تنظیمات و سیستم‌عامل نیز وابسته است",
         icon = Icons.Default.BatteryAlert
     )
     Spacer(modifier = Modifier.height(6.dp))
@@ -100,7 +104,7 @@ fun BatterySection(
                 }
 
                 if (isIgnoringBattery) {
-                    FarsiBadge(text = "مجاز و دقیق", isHoliday = false)
+                    FarsiBadge(text = "باتری بدون محدودیت", isHoliday = false)
                 } else {
                     FarsiBadge(text = "نیازمند اقدام", isHoliday = true)
                 }
@@ -109,12 +113,15 @@ fun BatterySection(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "سیستم‌عامل اندروید برای کاهش مصرف باتری ممکن است برنامه‌ها را در پس‌زمینه متوقف کند. برای اینکه یادآورهای SOH3IL دقیقاً سر موعد زنگ بزنند، حالت باتری برنامه را روی بدون محدودیت (Unrestricted) قرار دهید.",
+                text = "اندروید ممکن است تحویل هشدار را به تأخیر بیندازد. برداشتن محدودیت باتری به پایداری کمک می‌کند، اما زمان دقیق را تضمین نمی‌کند.",
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 lineHeight = 20.sp
             )
 
+            if (!exactAllowed) {
+                Text("زنگ دقیق در دسترس نیست؛ یادآورها ممکن است با تأخیر نمایش داده شوند.", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+            }
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(

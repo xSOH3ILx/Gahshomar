@@ -26,6 +26,7 @@ import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -37,6 +38,8 @@ object PersistentNotificationHelper {
     private const val NOTIFICATION_ID = 2001
     const val EXTRA_DATE_JDN = "soh3il.date.jdn"
     private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val renderLock = Any()
+    private var generation = 0L
     const val EXTRA_OPEN_ADD_REMINDER = "extra_open_add_reminder"
     const val ACTION_OPEN_ADD_REMINDER = "com.soh3il.calendar.action.OPEN_ADD_REMINDER"
 
@@ -91,6 +94,13 @@ object PersistentNotificationHelper {
     }
 
     fun updateNotification(context: Context, reminders: List<Reminder>?, summaryUnavailable: Boolean = false) {
+        synchronized(renderLock) {
+            generation++
+            renderNotification(context, reminders, summaryUnavailable)
+        }
+    }
+
+    private fun renderNotification(context: Context, reminders: List<Reminder>?, summaryUnavailable: Boolean = false) {
         MidnightScheduler.scheduleMidnightAlarm(context)
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
@@ -129,16 +139,18 @@ object PersistentNotificationHelper {
         val showGregorian = UserPreferences.isPersistentGregorianEnabled(context)
         val showHijri = UserPreferences.isPersistentHijriEnabled(context)
         val lineGregorian = if (showGregorian) {
-            "${rlm}تقویم میلادی: $gregStr (${conv.gregorian.dayOfMonth.toPersianDigits()} ${conv.dayOfWeekNameEn} ${conv.gregorian.year.toPersianDigits()})"
+            "${rlm}تقویم میلادی: $gregStr"
         } else null
         val lineHijri = if (showHijri && hijriStr != null) {
             "${rlm}تقویم هجری قمری محاسباتی: $hijriStr"
         } else null
 
         val lineOccasions = if (occasions.isNotEmpty()) {
-            "${rlm}رویدادها: " + occasions.joinToString("، ") { it.titleFa }
+            "${rlm}رویدادها: " + occasions.joinToString("، ") { it.titleFa } +
+                if (!IranianHolidays.hasOfficialLunarHolidays(today.year)) " (اطلاعات قمری ناقص است)" else ""
         } else {
-            "${rlm}رویدادها: بدون رویداد تعطیل"
+            if (!IranianHolidays.hasOfficialLunarHolidays(today.year)) "${rlm}اطلاعات تعطیلات قمری این سال کامل نیست"
+            else "${rlm}رویدادها: مناسبتی ثبت نشده است"
         }
 
         val lineReminders = if (todayRemindersCount == null) {
@@ -210,7 +222,10 @@ object PersistentNotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val smallIconRes = if (UserPreferences.isDynamicNotificationIconEnabled(context)) {
+        // The system may display the main small icon on the lock screen or AOD
+        // even when it uses a publicVersion for the notification contents.
+        val showOnLockscreen = UserPreferences.isLockscreenCalendarEnabled(context)
+        val smallIconRes = if (showOnLockscreen && UserPreferences.isDynamicNotificationIconEnabled(context)) {
             DateNotificationAssets.getDayDrawableRes(context, today.day)
         } else {
             com.soh3il.core.designsystem.R.drawable.ic_stat_calendar
@@ -250,9 +265,9 @@ object PersistentNotificationHelper {
         builder.setLargeIcon(dateBadgeBitmap)
 
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(smallIconRes)
-            .setContentTitle(fullTitle)
-            .setContentText(shortSummary)
+            .setSmallIcon(if (showOnLockscreen) smallIconRes else com.soh3il.core.designsystem.R.drawable.ic_stat_calendar)
+            .setContentTitle(if (showOnLockscreen) fullTitle else "SOH3IL")
+            .setContentText(if (showOnLockscreen) shortSummary else "محتوای تقویم پنهان است")
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
@@ -270,22 +285,37 @@ object PersistentNotificationHelper {
         }
     }
 
+    /** A slow earlier database read must never overwrite a newer refresh. */
+    fun beginRefresh(context: Context): Long = synchronized(renderLock) {
+        generation++
+        renderNotification(context.applicationContext, null)
+        generation
+    }
+
+    fun finishRefresh(context: Context, ticket: Long, reminders: List<Reminder>?, unavailable: Boolean = false) {
+        synchronized(renderLock) {
+            if (ticket == generation) renderNotification(context.applicationContext, reminders, unavailable)
+        }
+    }
+
     fun updateNotification(context: Context) {
         val app = context.applicationContext
         // Date and the next alarm must not depend on database availability.
-        updateNotification(app, null)
+        val ticket = beginRefresh(app)
         refreshScope.launch {
             try {
                 withTimeout(8_500L) {
                     val db = com.soh3il.core.database.Soh3ilDatabase.getInstance(app)
                     val active = db.reminderDao().getAllActiveRemindersSync().map { it.toDomain() }
-                    updateNotification(app, active)
+                    finishRefresh(app, ticket, active)
                 }
+            } catch (error: TimeoutCancellationException) {
+                finishRefresh(app, ticket, null, unavailable = true)
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
                 Log.e("PersistentDate", "Reminder summary unavailable: ${error.javaClass.simpleName}")
-                updateNotification(app, null, summaryUnavailable = true)
+                finishRefresh(app, ticket, null, unavailable = true)
             }
         }
     }
@@ -298,7 +328,10 @@ object PersistentNotificationHelper {
     }
 
     fun cancelNotification(context: Context) {
-        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.cancel(NOTIFICATION_ID)
+        synchronized(renderLock) {
+            generation++
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(NOTIFICATION_ID)
+        }
     }
 }

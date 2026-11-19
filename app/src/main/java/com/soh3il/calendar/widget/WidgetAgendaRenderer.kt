@@ -18,6 +18,11 @@ internal object WidgetAgendaRenderer {
     fun rows(data: WidgetSnapshot, options: WidgetOptions): List<WidgetAgendaRow> {
         val occurrences = if (options.showReminders) data.occurrences(data.today, 7).filter { it.epochMillis >= data.now } else emptyList()
         val rows = buildList {
+            if (options.showOccasions) {
+                (0..6).map { data.today.plusDays(it.toLong()).year }.distinct()
+                    .filterNot(com.soh3il.core.jalali.IranianHolidays::hasOfficialLunarHolidays)
+                    .forEach { year -> add(WidgetAgendaRow("اطلاعات ناقص", "تعطیلات قمری سال ${year.toString().toPersianDigits()} ثبت نشده است", WidgetDestination(data.today))) }
+            }
             repeat(7) { offset ->
                 val date = data.today.plusDays(offset.toLong())
                 if (options.showOccasions) data.occasions(date).forEach {

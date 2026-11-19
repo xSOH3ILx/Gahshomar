@@ -19,8 +19,5 @@ fun Reminder.toDeviceCalendarRrule(): String? {
         }
     }
     val rule = IcsRecurrenceCodec.standardRrule(this)?.removePrefix("RRULE:") ?: return null
-    return if (recurrence.type == RecurrenceType.WEEKLY) {
-        val weekStart = DateConverter.fromJalali(jalaliYear, jalaliMonth, jalaliDay).gregorian.dayOfWeek.name.take(2)
-        "$rule;WKST=$weekStart"
-    } else rule
+    return rule
 }

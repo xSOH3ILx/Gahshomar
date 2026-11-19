@@ -77,4 +77,18 @@ class WidgetUpdateTest {
         assertNotEquals(WidgetNavigation.pending(context, 1, first), WidgetNavigation.pending(context, 2, second))
         assertNull(WidgetNavigation.parse(Intent("unknown")))
     }
+    @Test fun timedOutRefreshShowsAnErrorInsteadOfStaleWidgetData() = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        bind(context, 112, WidgetKind.DAILY)
+        try {
+            WidgetUpdates.refreshWithinDeadline(context, timeoutMs = 50) {
+                kotlinx.coroutines.delay(500); emptyList()
+            }
+            fail("Expected timeout")
+        } catch (expected: kotlinx.coroutines.TimeoutCancellationException) {
+            val root = shadowOf(AppWidgetManager.getInstance(context)).getViewFor(112)
+            assertTrue(root.findViewById<TextView>(R.id.widget_error_message).text.toString().contains("در دسترس نیست"))
+        }
+    }
+
 }

@@ -44,4 +44,19 @@ class ReminderImportTest {
         assertEquals(1 to 1, import(listOf(reminder().copy(description = "distinct"))))
         assertEquals(2, db.reminderDao().getAllRemindersSync().size)
     }
+    @Test fun databaseFailureRollsBackTheEntireImportBatch() = runBlocking {
+        val sql = db.openHelper.writableDatabase
+        sql.execSQL("CREATE TRIGGER fail_import BEFORE INSERT ON reminders WHEN NEW.title = 'reject' BEGIN SELECT RAISE(ABORT, 'test failure'); END")
+        try {
+            try {
+                import(listOf(reminder().copy(title = "first"), reminder().copy(title = "reject")))
+                fail("Expected an insert failure")
+            } catch (expected: Exception) {
+                assertTrue(db.reminderDao().getAllRemindersSync().isEmpty())
+            }
+        } finally {
+            sql.execSQL("DROP TRIGGER IF EXISTS fail_import")
+        }
+    }
+
 }

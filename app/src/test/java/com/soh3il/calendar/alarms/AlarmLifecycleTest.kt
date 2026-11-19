@@ -63,8 +63,8 @@ class AlarmLifecycleTest {
     }
 
     private fun requestSnooze(): Intent {
-        deliver(shadowOf(manager.activeNotifications.single { it.notification.actions != null }.notification.actions[1].actionIntent).savedIntent)
-        return shadowOf(alarms.scheduledAlarms.single().operation).savedIntent
+        deliver(shadowOf(manager.activeNotifications.single { it.notification.extras.getString("android.title") == "fixture" }.notification.actions[1].actionIntent).savedIntent)
+        return shadowOf(alarms.scheduledAlarms.single { shadowOf(it.operation).savedIntent.getBooleanExtra(AlarmScheduler.EXTRA_IS_SNOOZE, false) }.operation).savedIntent
     }
 
     @Test fun oneOffSnoozeStillPostsAfterTheOriginalWasCompleted() = runBlocking {
@@ -106,4 +106,83 @@ class AlarmLifecycleTest {
         deliver(legacyIntent)
         assertTrue(manager.activeNotifications.any { it.notification.extras.getString("android.title") == "fixture" })
     }
+    @Test fun snoozeIsRestoredAfterSystemAlarmsAreCleared() = runBlocking {
+        AlarmScheduler.scheduleSnooze(context, id)
+        val scheduled = alarms.scheduledAlarms.single()
+        val original = scheduled.triggerAtTime
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(scheduled.operation!!)
+        assertTrue(alarms.scheduledAlarms.isEmpty())
+        AlarmScheduler.restoreSnoozes(context)
+        assertEquals(original, alarms.scheduledAlarms.single().triggerAtTime)
+    }
+
+    @Test fun blockedOneOffIsRetriedWhenPermissionReturns() = runBlocking {
+        val updated = db.reminderDao().getReminderById(id)!!.copy(hour = 10)
+        db.reminderDao().updateReminder(updated)
+        AlarmScheduler.scheduleReminder(context, updated.toDomain())
+        SystemClock.setCurrentTimeMillis(JalaliDate(1405, 8, 24).toEpochMillis(10) + 1_000)
+        shadowOf(context).denyPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        val originalAlarm = alarms.scheduledAlarms.single { shadowOf(it.operation).savedIntent.action == AlarmScheduler.ACTION_ALARM_TRIGGER && shadowOf(it.operation).savedIntent.getLongExtra(AlarmScheduler.EXTRA_REMINDER_ID, -1L) == id }
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(originalAlarm.operation!!)
+        deliver(mainAlarm())
+        assertTrue(db.reminderDao().getReminderById(id)!!.isEnabled)
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        AlarmScheduler.recoverMissed(context)
+        val recovered = alarms.scheduledAlarms.single { shadowOf(it.operation).savedIntent.action == AlarmScheduler.ACTION_ALARM_TRIGGER && shadowOf(it.operation).savedIntent.getLongExtra(AlarmScheduler.EXTRA_REMINDER_ID, -1L) == id }
+        assertTrue(recovered.triggerAtTime > System.currentTimeMillis())
+    }
+
+    @Test fun blockedRecurringOccurrenceIsRetriedOnlyOnceThenSchedulesTheFuture() = runBlocking {
+        val entity = db.reminderDao().getReminderById(id)!!.copy(hour = 10,
+            recurrenceRule = com.soh3il.core.model.RecurrenceRule(com.soh3il.core.model.RecurrenceType.DAILY))
+        db.reminderDao().updateReminder(entity)
+        AlarmScheduler.scheduleReminder(context, entity.toDomain())
+        fun mainAlarms() = alarms.scheduledAlarms.filter {
+            val intent = shadowOf(it.operation).savedIntent
+            intent.action == AlarmScheduler.ACTION_ALARM_TRIGGER &&
+                intent.getLongExtra(AlarmScheduler.EXTRA_REMINDER_ID, -1L) == id &&
+                !intent.getBooleanExtra(AlarmScheduler.EXTRA_IS_PRE_REMINDER, false)
+        }
+        SystemClock.setCurrentTimeMillis(JalaliDate(1405, 8, 24).toEpochMillis(10) + 1_000)
+        val original = mainAlarms().single()
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(original.operation!!)
+        shadowOf(context).denyPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        deliver(mainAlarm())
+        assertTrue(mainAlarms().isEmpty())
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        AlarmScheduler.recoverMissed(context)
+        val retry = mainAlarms().single()
+        assertEquals(System.currentTimeMillis() + 1_000, retry.triggerAtTime)
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(retry.operation!!)
+        SystemClock.setCurrentTimeMillis(retry.triggerAtTime + 1)
+        deliver(shadowOf(retry.operation).savedIntent)
+        assertTrue(manager.activeNotifications.any { it.notification.extras.getString("android.title") == "fixture" })
+        val next = mainAlarms().single().triggerAtTime
+        assertEquals(JalaliDate(1405, 8, 25).toEpochMillis(10), next)
+        AlarmScheduler.recoverMissed(context)
+        assertEquals(next, mainAlarms().single().triggerAtTime)
+    }
+
+    @Test fun bootCoalescesSeveralMissedRecurringOccurrences() = runBlocking {
+        val entity = db.reminderDao().getReminderById(id)!!.copy(hour = 10,
+            recurrenceRule = com.soh3il.core.model.RecurrenceRule(com.soh3il.core.model.RecurrenceType.DAILY))
+        db.reminderDao().updateReminder(entity)
+        AlarmScheduler.scheduleReminder(context, entity.toDomain())
+        SystemClock.setCurrentTimeMillis(JalaliDate(1405, 8, 27).toEpochMillis(11))
+        com.soh3il.core.scheduler.MidnightReceiver.refreshNow(context, Intent.ACTION_BOOT_COMPLETED) { listOf(entity.toDomain()) }
+        val recovered = alarms.scheduledAlarms.single {
+            val intent = shadowOf(it.operation).savedIntent
+            intent.action == AlarmScheduler.ACTION_ALARM_TRIGGER && intent.getLongExtra(AlarmScheduler.EXTRA_REMINDER_ID, -1L) == id
+        }
+        assertEquals(System.currentTimeMillis() + 1_000, recovered.triggerAtTime)
+        (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(recovered.operation!!)
+        SystemClock.setCurrentTimeMillis(recovered.triggerAtTime + 1)
+        deliver(shadowOf(recovered.operation).savedIntent)
+        val next = alarms.scheduledAlarms.single {
+            val intent = shadowOf(it.operation).savedIntent
+            intent.action == AlarmScheduler.ACTION_ALARM_TRIGGER && intent.getLongExtra(AlarmScheduler.EXTRA_REMINDER_ID, -1L) == id
+        }
+        assertEquals(JalaliDate(1405, 8, 28).toEpochMillis(10), next.triggerAtTime)
+    }
+
 }

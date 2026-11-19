@@ -30,6 +30,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.Switch
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -63,9 +66,11 @@ fun AddReminderSheet(
     existingReminder: Reminder? = null,
     onDismiss: () -> Unit,
     onSaveReminder: (Reminder) -> Unit,
-    onDeleteReminder: ((Reminder) -> Unit)? = null
+    onDeleteReminder: ((Reminder) -> Unit)? = null,
+    isSaving: Boolean = false
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
 
     val draft = rememberSaveable(existingReminder?.id, saver = ReminderDraftState.Saver) {
         ReminderDraftState(initialDate, existingReminder)
@@ -189,10 +194,19 @@ fun AddReminderSheet(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    Text("یادآور فعال باشد")
+                    Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it }, enabled = !isSaving)
+                }
                 // 7. Save CTA Button (M3 Pill shape)
                 Button(
                     onClick = {
                         if (title.isNotBlank()) {
+                            if (reminderEnabled && recurrenceType == RecurrenceType.NONE &&
+                                selectedDate.toEpochMillis(selectedHour, selectedMinute) <= System.currentTimeMillis()) {
+                                Toast.makeText(context, "زمان یادآور گذشته است؛ زمان آینده انتخاب کنید یا یادآور را غیرفعال کنید.", Toast.LENGTH_LONG).show()
+                                return@Button
+                            }
                             val preList = preRemindersForSave(existingReminder)
 
                             val reminder = Reminder(
@@ -216,22 +230,22 @@ fun AddReminderSheet(
                                         ?.recurrence
                                         ?.daysOfWeek
                                         ?: emptySet(),
+                                    weekStart = existingReminder?.recurrence?.weekStart?.takeIf { recurrenceType == RecurrenceType.WEEKLY },
                                     shortMonthPolicy = if (recurrenceType == RecurrenceType.MONTHLY_GREGORIAN || recurrenceType == RecurrenceType.YEARLY_GREGORIAN) {
                                         ShortMonthPolicy.SKIP_MONTH
                                     } else existingReminder?.recurrence?.shortMonthPolicy ?: ShortMonthPolicy.SNAP_TO_LAST_DAY
                                 ),
                                 preReminders = preList,
-                                isEnabled = true,
+                                isEnabled = reminderEnabled,
                                 colorHex = selectedColorHex
                             )
                             onSaveReminder(reminder)
-                            onDismiss()
                         }
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = title.isNotBlank(),
+                    enabled = title.isNotBlank() && !isSaving,
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
@@ -252,6 +266,7 @@ fun AddReminderSheet(
 
                     OutlinedButton(
                         onClick = { showDeleteConfirmDialog = true },
+                        enabled = !isSaving,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),
@@ -321,7 +336,6 @@ fun AddReminderSheet(
                 onConfirmDelete = {
                     showDeleteConfirmDialog = false
                     onDeleteReminder(existingReminder)
-                    onDismiss()
                 }
             )
         }

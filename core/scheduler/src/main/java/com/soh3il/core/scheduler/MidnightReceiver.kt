@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.soh3il.core.database.Soh3ilDatabase
-import com.soh3il.core.database.preferences.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -87,25 +86,20 @@ class MidnightReceiver : BroadcastReceiver() {
             }
         ) {
             MidnightScheduler.scheduleMidnightAlarm(context)
-            PersistentNotificationHelper.updateNotification(context, null)
+            val notificationTicket = PersistentNotificationHelper.beginRefresh(context)
             requestWidgetUpdate(context)
             val activeReminders = try {
                 readReminders()
             } catch (error: CancellationException) {
+                PersistentNotificationHelper.finishRefresh(context, notificationTicket, null, unavailable = true)
                 throw error
             } catch (error: Exception) {
-                PersistentNotificationHelper.updateNotification(context, null, summaryUnavailable = true)
+                PersistentNotificationHelper.finishRefresh(context, notificationTicket, null, unavailable = true)
                 throw error
             }
 
-            if (action == ACTION_NOTIFICATION_DISMISSED) {
-                if (UserPreferences.isPersistentNotificationEnabled(context) &&
-                    NotificationHelper.canPostNotifications(context)
-                ) {
-                    PersistentNotificationHelper.updateNotification(context, activeReminders)
-                }
-                return
-            }
+            PersistentNotificationHelper.finishRefresh(context, notificationTicket, activeReminders)
+            if (action == ACTION_NOTIFICATION_DISMISSED) return
 
             if (action in RESCHEDULE_ACTIONS) {
                 AlarmMigration.migrate(context)
@@ -116,9 +110,9 @@ class MidnightReceiver : BroadcastReceiver() {
                         forceRecalculate = true
                     )
                 }
+                AlarmScheduler.restoreSnoozes(context)
             }
 
-            PersistentNotificationHelper.updateNotification(context, activeReminders)
             LiveIconHelper.updateLiveIcon(context)
         }
 

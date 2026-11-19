@@ -29,7 +29,9 @@ data class RecurrenceRule(
     val interval: Int = 1, // Every 1 month, every 2 weeks, etc.
     val dayOfMonth: Int? = null, // e.g., 3 for "3rd of every month"
     val daysOfWeek: Set<Int> = emptySet(), // 1=Shanbeh to 7=Jomeh
-    val shortMonthPolicy: ShortMonthPolicy = ShortMonthPolicy.SNAP_TO_LAST_DAY
+    val shortMonthPolicy: ShortMonthPolicy = ShortMonthPolicy.SNAP_TO_LAST_DAY,
+    // null preserves the original app convention: week begins on the anchor day.
+    val weekStart: Int? = null // 1=Saturday ... 7=Friday
 )
 
 /**

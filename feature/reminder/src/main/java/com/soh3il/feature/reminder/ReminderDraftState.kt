@@ -16,6 +16,7 @@ internal class ReminderDraftState(initialDate: JalaliDate, existingReminder: Rem
     var selectedDate by mutableStateOf(existingReminder?.let { JalaliDate(it.jalaliYear, it.jalaliMonth, it.jalaliDay) } ?: initialDate)
     var title by mutableStateOf(existingReminder?.title ?: "")
     var description by mutableStateOf(existingReminder?.description ?: "")
+    var reminderEnabled by mutableStateOf(existingReminder?.isEnabled ?: true)
     var selectedHour by mutableIntStateOf(existingReminder?.hour ?: 9)
     var selectedMinute by mutableIntStateOf(existingReminder?.minute ?: 0)
     var selectedColorHex by mutableStateOf(existingReminder?.colorHex ?: "#2563EB")
@@ -61,6 +62,7 @@ internal class ReminderDraftState(initialDate: JalaliDate, existingReminder: Rem
                     "selectedDate" to it.selectedDate.toJdn(),
                     "title" to it.title,
                     "description" to it.description,
+                    "reminderEnabled" to it.reminderEnabled,
                     "selectedHour" to it.selectedHour,
                     "selectedMinute" to it.selectedMinute,
                     "selectedColorHex" to it.selectedColorHex,
@@ -82,6 +84,7 @@ internal class ReminderDraftState(initialDate: JalaliDate, existingReminder: Rem
                     selectedDate = JalaliDate.fromJdn(values.getValue("selectedDate") as Long)
                     title = values.getValue("title") as String
                     description = values.getValue("description") as String
+                    reminderEnabled = values["reminderEnabled"] as? Boolean ?: true
                     selectedHour = values.getValue("selectedHour") as Int
                     selectedMinute = values.getValue("selectedMinute") as Int
                     selectedColorHex = values.getValue("selectedColorHex") as String

@@ -29,24 +29,14 @@ object IcsParser {
         sb.append("PRODID:-//SOH3IL//Persian Calendar//FA\r\n")
         sb.append("CALSCALE:GREGORIAN\r\n")
         sb.append("METHOD:PUBLISH\r\n")
-        sb.append("BEGIN:VTIMEZONE\r\n")
-        sb.append("TZID:Asia/Tehran\r\n")
-        sb.append("BEGIN:STANDARD\r\n")
-        sb.append("DTSTART:20220922T000000\r\n")
-        sb.append("TZOFFSETFROM:+0330\r\n")
-        sb.append("TZOFFSETTO:+0330\r\n")
-        sb.append("TZNAME:IRST\r\n")
-        sb.append("END:STANDARD\r\n")
-        sb.append("END:VTIMEZONE\r\n")
+        appendTehranTimeZone(sb)
 
         val nowStr = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
             .withZone(ZoneOffset.UTC)
             .format(Instant.now())
 
         reminders.forEach { rem ->
-            val gDate = runCatching {
-                DateConverter.fromJalali(rem.jalaliYear, rem.jalaliMonth, rem.jalaliDay).gregorian
-            }.getOrDefault(LocalDate.now(JalaliDate.TEHRAN_ZONE))
+            val gDate = DateConverter.fromJalali(rem.jalaliYear, rem.jalaliMonth, rem.jalaliDay).gregorian
 
             val dtStart = String.format(
                 Locale.ROOT,
@@ -75,6 +65,8 @@ object IcsParser {
             }
             sb.append(foldLine("X-SOH3IL-RECURRENCE:${IcsRecurrenceCodec.xRecurrence(rem)}"))
             sb.append("\r\n")
+            sb.append("X-SOH3IL-ENABLED:${rem.isEnabled}\r\n")
+            sb.append("X-SOH3IL-COLOR:${rem.colorHex}\r\n")
 
             rem.preReminders.forEach { pre ->
                 val minutes = pre.toMinutes()
@@ -99,11 +91,38 @@ object IcsParser {
         return sb.toString()
     }
 
+    // Preserve historical Tehran DST transitions for external iCalendar consumers.
+    private fun appendTehranTimeZone(sb: StringBuilder) {
+        val rules = ZoneId.of("Asia/Tehran").rules
+        require(rules.transitionRules.isEmpty()) { "قواعد آیندهٔ منطقهٔ زمانی برای خروجی پشتیبانی نمی‌شود" }
+        val transitions = rules.transitions
+        val initial = transitions.firstOrNull()?.offsetBefore ?: rules.getOffset(Instant.EPOCH)
+        val format = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss", Locale.ROOT)
+        sb.append("BEGIN:VTIMEZONE\r\nTZID:Asia/Tehran\r\n")
+        sb.append("BEGIN:STANDARD\r\nDTSTART:00010101T000000\r\n")
+        sb.append("TZOFFSETFROM:${icsOffset(initial)}\r\nTZOFFSETTO:${icsOffset(initial)}\r\nEND:STANDARD\r\n")
+        transitions.forEach { transition ->
+            val kind = if (rules.isDaylightSavings(transition.instant.plusSeconds(1))) "DAYLIGHT" else "STANDARD"
+            sb.append("BEGIN:$kind\r\n")
+            sb.append("DTSTART:${format.format(transition.dateTimeBefore)}\r\n")
+            sb.append("TZOFFSETFROM:${icsOffset(transition.offsetBefore)}\r\n")
+            sb.append("TZOFFSETTO:${icsOffset(transition.offsetAfter)}\r\nEND:$kind\r\n")
+        }
+        sb.append("END:VTIMEZONE\r\n")
+    }
+
+    private fun icsOffset(offset: ZoneOffset): String {
+        val seconds = kotlin.math.abs(offset.totalSeconds)
+        val sign = if (offset.totalSeconds < 0) "-" else "+"
+        val hhmm = String.format(Locale.ROOT, "%s%02d%02d", sign, seconds / 3600, seconds % 3600 / 60)
+        return if (seconds % 60 == 0) hhmm else hhmm + String.format(Locale.ROOT, "%02d", seconds % 60)
+    }
+
     /**
      * خواندن ایمن رویدادها از فایل ICS ورودی مطابق با RFC 5545 (با پشتیبانی از Line Unfolding،
      * مهار سرریز حافظه با سقف ۱۰ مگابایت و حداکثر ۵,۰۰۰ رویداد، و پاک‌سازی کاراکترهای کنترلی).
      */
-    fun importFromIcsStream(inputStream: InputStream, maxEvents: Int = MAX_EVENTS): List<Reminder> {
+    fun importFromIcsStream(inputStream: InputStream, maxEvents: Int = MAX_EVENTS, strict: Boolean = false): List<Reminder> {
         val reminders = mutableListOf<Reminder>()
         val eventLimit = maxEvents.coerceIn(0, MAX_EVENTS)
         if (eventLimit == 0) return emptyList()
@@ -121,6 +140,10 @@ object IcsParser {
             }
         }
         currentBuilder?.let { unfoldedLines.add(it.toString()) }
+        if (strict) {
+            require(unfoldedLines.any { it.trim().equals("BEGIN:VCALENDAR", true) } &&
+                unfoldedLines.any { it.trim().equals("END:VCALENDAR", true) }) { "ساختار فایل تقویم معتبر نیست" }
+        }
 
         var inEvent = false
         var inAlarm = false
@@ -131,11 +154,16 @@ object IcsParser {
         var currentDtStartIsUtc = false
         var currentRrule = ""
         var currentXRecurrence = ""
+        var currentEnabled = true
+        var currentColor = "#2563EB"
         val currentPreReminders = mutableListOf<PreReminder>()
 
         for (line in unfoldedLines) {
             val trimmed = line.trim()
-            if (trimmed.equals("BEGIN:VEVENT", ignoreCase = true)) {
+            if (strict && trimmed.equals("METHOD:CANCEL", ignoreCase = true)) {
+                throw IllegalArgumentException("فایل لغو رویداد پشتیبانی نمی‌شود")
+            } else if (trimmed.equals("BEGIN:VEVENT", ignoreCase = true)) {
+                if (strict && inEvent) throw IllegalArgumentException("ساختار رویدادها معتبر نیست")
                 inEvent = true
                 inAlarm = false
                 currentSummary = ""
@@ -145,6 +173,8 @@ object IcsParser {
                 currentDtStartIsUtc = false
                 currentRrule = ""
                 currentXRecurrence = ""
+                currentEnabled = true
+                currentColor = "#2563EB"
                 currentPreReminders.clear()
             } else if (trimmed.equals("BEGIN:VALARM", ignoreCase = true)) {
                 inAlarm = true
@@ -162,14 +192,19 @@ object IcsParser {
                         dtStartIsUtc = currentDtStartIsUtc,
                         rrule = currentRrule,
                         xRecurrence = currentXRecurrence,
-                        preReminders = currentPreReminders.toList()
+                        preReminders = currentPreReminders.toList(),
+                        isEnabled = currentEnabled, colorHex = currentColor, strict = strict
                     )
                     if (parsed != null) {
+                        if (strict && reminders.size >= eventLimit) throw IllegalArgumentException("تعداد رویدادهای فایل بیش از سقف مجاز است")
                         reminders.add(parsed)
-                        if (reminders.size >= eventLimit) {
+                        if (!strict && reminders.size >= eventLimit) {
                             break
                         }
                     }
+                }
+                if (strict && (currentSummary.isBlank() || currentDtStart.length < 8)) {
+                    throw IllegalArgumentException("عنوان یا تاریخ یکی از رویدادها معتبر نیست")
                 }
                 inEvent = false
                 inAlarm = false
@@ -197,16 +232,26 @@ object IcsParser {
                                 .firstOrNull { it.startsWith("TZID=", ignoreCase = true) }
                                 ?.substringAfter("=")
                             currentDtStartZoneId = tzid?.let { runCatching { ZoneId.of(it) }.getOrNull() }
+                            if (strict && tzid != null && currentDtStartZoneId == null) throw IllegalArgumentException("منطقهٔ زمانی رویداد شناخته نشد")
                         }
                         trimmed.startsWith("RRULE:", ignoreCase = true) ->
                             currentRrule = trimmed.substring(6)
                         trimmed.startsWith("X-SOH3IL-RECURRENCE:", ignoreCase = true) ->
                             currentXRecurrence = trimmed.substringAfter(":")
+                        trimmed.startsWith("X-SOH3IL-ENABLED:", ignoreCase = true) ->
+                            currentEnabled = trimmed.substringAfter(":").equals("true", ignoreCase = true)
+                        trimmed.startsWith("X-SOH3IL-COLOR:", ignoreCase = true) -> {
+                            val value = trimmed.substringAfter(":")
+                            if (value.matches(Regex("#[0-9A-Fa-f]{6}"))) currentColor = value
+                        }
+                        strict && (trimmed.startsWith("EXDATE", true) || trimmed.startsWith("RDATE", true) || trimmed.startsWith("RECURRENCE-ID", true) || trimmed.startsWith("EXRULE", true) || trimmed.equals("STATUS:CANCELLED", true)) ->
+                            throw IllegalArgumentException("استثنای تکرار ICS پشتیبانی نمی‌شود")
                     }
                 }
             }
         }
 
+        if (strict && (inEvent || inAlarm)) throw IllegalArgumentException("رویداد ناتمام در فایل تقویم وجود دارد")
         return reminders
     }
 
@@ -218,7 +263,10 @@ object IcsParser {
         dtStartZoneId: ZoneId? = null,
         dtStartIsUtc: Boolean = false,
         xRecurrence: String = "",
-        preReminders: List<PreReminder> = emptyList()
+        preReminders: List<PreReminder> = emptyList(),
+        isEnabled: Boolean = true,
+        colorHex: String = "#2563EB",
+        strict: Boolean = false
     ): Reminder? {
         return runCatching {
             val normalizedDtStart = dtStart.removeSuffix("Z").removeSuffix("z")
@@ -256,9 +304,15 @@ object IcsParser {
                 tehranDateTime.dayOfMonth
             )
             val recurrence = if (xRecurrence.isNotBlank()) {
-                IcsRecurrenceCodec.parseXRecurrence(xRecurrence)
+                IcsRecurrenceCodec.parseXRecurrence(xRecurrence, strict)
             } else {
-                IcsRecurrenceCodec.parseStandardRrule(rrule)
+                IcsRecurrenceCodec.parseStandardRrule(rrule, strict)
+            }
+            if (strict && recurrence.type != RecurrenceType.NONE && (dtStartIsUtc || (dtStartZoneId != null && dtStartZoneId != JalaliDate.TEHRAN_ZONE))) {
+                throw IllegalArgumentException("تکرار با منطقهٔ زمانی غیر از تهران پشتیبانی نمی‌شود")
+            }
+            if (strict && recurrence.type in setOf(RecurrenceType.MONTHLY_JALALI, RecurrenceType.YEARLY_JALALI) && recurrence.dayOfMonth != null) {
+                require(recurrence.dayOfMonth == jResult.jalali.day) { "روز تکرار با تاریخ شروع یکسان نیست" }
             }
             if (recurrence.type == RecurrenceType.MONTHLY_GREGORIAN || recurrence.type == RecurrenceType.YEARLY_GREGORIAN) {
                 require(recurrence.dayOfMonth == null || recurrence.dayOfMonth == tehranDateTime.dayOfMonth) {
@@ -276,9 +330,13 @@ object IcsParser {
                 minute = tehranDateTime.minute,
                 recurrence = recurrence,
                 preReminders = preReminders,
-                isEnabled = true
+                isEnabled = isEnabled,
+                colorHex = colorHex
             )
-        }.getOrNull()
+        }.getOrElse { error ->
+            if (strict) throw IllegalArgumentException("یکی از رویدادهای فایل معتبر یا قابل پشتیبانی نیست: ${error.message}", error)
+            null
+        }
     }
 
     fun foldLine(line: String): String {
@@ -287,8 +345,9 @@ object IcsParser {
         val current = StringBuilder()
         var byteCount = 0
         var first = true
-        for (ch in line) {
-            val charBytes = ch.toString().toByteArray(Charsets.UTF_8).size
+        for (codePoint in line.codePoints().toArray()) {
+            val ch = String(Character.toChars(codePoint))
+            val charBytes = ch.toByteArray(Charsets.UTF_8).size
             val max = if (first) 75 else 74
             if (byteCount + charBytes > max && current.isNotEmpty()) {
                 if (!first) out.append("\r\n ")

@@ -57,26 +57,32 @@ class AlarmReceiver : BroadcastReceiver() {
                                     preOffsetMinutes = preOffsetMinutes
                                 )
                                 if (isPre || isSnooze) {
+                                    if (isPre) AlarmScheduler.schedulePreReminder(context, entity.toDomain(), preOffsetMinutes)
                                     if (isSnooze && posted) AlarmIdentity.clearSnooze(context, reminderId)
                                     return@withTimeoutOrNull
                                 }
 
                                 val domain = entity.toDomain()
                                 if (domain.recurrence.type == RecurrenceType.NONE) {
-                                    if (posted) db.reminderDao().updateReminder(entity.copy(isEnabled = false))
+                                    if (posted) {
+                                        db.reminderDao().updateReminder(entity.copy(isEnabled = false))
+                                        AlarmScheduler.clearMain(context, reminderId)
+                                    }
                                 } else {
+                                    // Keep the original scheduled timestamp when posting is blocked.
+                                    // On a later permission recovery it becomes one coalesced retry.
+                                    if (!posted) return@withTimeoutOrNull
                                     val nextEpoch = JalaliRecurrenceEngine.calculateNextTrigger(
                                         reminder = domain,
                                         referenceEpochMillis = System.currentTimeMillis() + 1000L
                                     )
                                     if (nextEpoch != null) {
                                         db.reminderDao().updateReminder(entity.copy(nextTriggerEpochMillis = nextEpoch))
-                                        AlarmScheduler.scheduleReminder(context, domain.copy(nextTriggerEpochMillis = nextEpoch))
+                                        AlarmScheduler.clearMain(context, reminderId)
+                                        AlarmScheduler.scheduleReminder(context, domain.copy(nextTriggerEpochMillis = nextEpoch), includePreReminders = false)
                                     }
                                 }
-                                if (!posted) {
-                                    PersistentNotificationHelper.updateNotification(context)
-                                }
+                                PersistentNotificationHelper.updateNotification(context)
                                 MidnightReceiver.requestWidgetUpdate(context)
                             }
                         }
@@ -88,9 +94,12 @@ class AlarmReceiver : BroadcastReceiver() {
                                 val domain = entity.toDomain()
                                 if (domain.recurrence.type == RecurrenceType.NONE) {
                                     db.reminderDao().updateReminder(entity.copy(isEnabled = false))
+                                    AlarmScheduler.cancelReminder(context, domain)
                                 }
                                 val preOffsetMinutes = intent.getIntExtra(AlarmScheduler.EXTRA_PRE_OFFSET_MINUTES, 0)
                                 NotificationHelper.cancelReminderNotification(context, reminderId, preOffsetMinutes)
+                                PersistentNotificationHelper.updateNotification(context)
+                                MidnightReceiver.requestWidgetUpdate(context)
                             }
                         }
 

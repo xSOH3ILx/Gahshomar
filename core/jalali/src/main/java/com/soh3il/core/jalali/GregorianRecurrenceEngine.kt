@@ -42,7 +42,7 @@ internal object GregorianRecurrenceEngine {
         // Gregorian month lengths repeat within 4,800 months, including interval phases.
         repeat(4_801) {
             val date = occurrence(reminder, base, step)
-            if (date != null) {
+            if (date != null && date >= base) {
                 val epoch = date.atTime(reminder.hour, reminder.minute).atZone(zoneId).toInstant().toEpochMilli()
                 if (epoch > reference) return epoch
             }

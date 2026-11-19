@@ -99,7 +99,7 @@ fun ToolsSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "سازگار با تقویم گوگل، اوت‌لوک و نرم‌افزارهای استاندارد تقویم.",
+                text = "تکرار خورشیدی در فایل مخصوص SOH3IL حفظ می‌شود؛ سایر تقویم‌ها فقط نوبت اول آن را می‌بینند. بعضی قوانین ICS خارجی پشتیبانی نمی‌شوند.",
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
@@ -139,7 +139,7 @@ fun ToolsSection(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "یادآورهای SOH3IL را در تقویم قابل ویرایش دستگاه ثبت یا به‌روزرسانی می‌کند.",
+                text = "یادآورهای فعال را ثبت یا به‌روزرسانی می‌کند؛ ویرایش‌های دستی همان رویدادها ممکن است جایگزین شوند. موارد حذف‌شده یا غیرفعال برای تأیید حذف نمایش داده می‌شوند.",
                 fontSize = 11.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)

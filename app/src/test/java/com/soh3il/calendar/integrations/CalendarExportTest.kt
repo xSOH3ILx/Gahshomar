@@ -27,17 +27,24 @@ class CalendarExportTest {
         val inserted = mutableListOf<ContentValues>()
         val updated = mutableListOf<ContentValues>()
         var existingEventId: Long? = null
+        var existingDescription: String = "old\n[SOH3IL_REMINDER:2]"
+        var secondEventId: Long? = null
         var updateCount = 1
+        var nullEventQuery = false
+        var nullInsert = false
         var eventQueryArgs: List<String> = emptyList()
         override fun onCreate() = true
-        override fun query(uri: Uri, projection: Array<out String>?, selection: String?, args: Array<out String>?, sort: String?): Cursor {
+        override fun query(uri: Uri, projection: Array<out String>?, selection: String?, args: Array<out String>?, sort: String?): Cursor? {
+            if (uri == CalendarContract.Events.CONTENT_URI && nullEventQuery) return null
             if (uri == CalendarContract.Events.CONTENT_URI) eventQueryArgs = args?.toList().orEmpty()
             return MatrixCursor(projection).apply {
-                if (uri == CalendarContract.Calendars.CONTENT_URI) addRow(arrayOf(7L, CalendarContract.Calendars.CAL_ACCESS_OWNER))
-                if (uri == CalendarContract.Events.CONTENT_URI && existingEventId != null) addRow(arrayOf(existingEventId))
+                if (uri == CalendarContract.Calendars.CONTENT_URI) addRow(arrayOf<Any>(7L, CalendarContract.Calendars.CAL_ACCESS_OWNER))
+                if (uri == CalendarContract.Events.CONTENT_URI && existingEventId != null) addRow(arrayOf(existingEventId, existingDescription))
+                if (uri == CalendarContract.Events.CONTENT_URI && secondEventId != null) addRow(arrayOf(secondEventId, existingDescription))
             }
         }
-        override fun insert(uri: Uri, values: ContentValues?): Uri {
+        override fun insert(uri: Uri, values: ContentValues?): Uri? {
+            if (nullInsert) return null
             inserted.add(ContentValues(requireNotNull(values)))
             return Uri.withAppendedPath(uri, inserted.size.toString())
         }
@@ -100,4 +107,30 @@ class CalendarExportTest {
         provider.updateCount = 0
         assertTrue(CalendarProviderSync.syncReminders(context, listOf(reminder(RecurrenceType.NONE))).isFailure)
     }
+    @Test fun nullProviderQueryDoesNotCauseDuplicateInsertion() = runBlocking {
+        val provider = provider().apply { nullEventQuery = true }
+        assertTrue(CalendarProviderSync.syncReminders(context, listOf(reminder(RecurrenceType.NONE))).isFailure)
+        assertTrue(provider.inserted.isEmpty())
+    }
+    @Test fun nullInsertIsReportedAsFailure() = runBlocking {
+        val provider = provider().apply { nullInsert = true }
+        assertTrue(CalendarProviderSync.syncReminders(context, listOf(reminder(RecurrenceType.NONE))).isFailure)
+        assertTrue(provider.inserted.isEmpty())
+    }
+
+    @Test fun sqlWildcardLookalikeIsNeverOverwritten() = runBlocking {
+        val provider = provider().apply { existingEventId = 1L; existingDescription = "old\n[SOH3ILXREMINDER:2]" }
+        assertEquals(1, CalendarProviderSync.syncReminders(context, listOf(reminder(RecurrenceType.NONE))).getOrThrow())
+        assertTrue(provider.updated.isEmpty())
+        assertEquals(1, provider.inserted.size)
+    }
+    @Test fun modifiedMarkerOrDuplicateMarkersAreNotOverwritten() = runBlocking {
+        val provider = provider().apply { existingEventId = 1L; existingDescription = "old\n[SOH3IL_REMINDER:2]\nuser edit" }
+        assertTrue(CalendarProviderSync.syncReminders(context, listOf(reminder(RecurrenceType.NONE))).isFailure)
+        assertTrue(provider.updated.isEmpty()); assertTrue(provider.inserted.isEmpty())
+        provider.existingDescription = "old\n[SOH3IL_REMINDER:2]"; provider.secondEventId = 2L
+        assertTrue(CalendarProviderSync.syncReminders(context, listOf(reminder(RecurrenceType.NONE))).isFailure)
+        assertTrue(provider.updated.isEmpty()); assertTrue(provider.inserted.isEmpty())
+    }
+
 }

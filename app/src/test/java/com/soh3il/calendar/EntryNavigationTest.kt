@@ -84,6 +84,7 @@ class EntryNavigationTest {
     @Test(timeout = 60_000) fun missingNotificationTargetShowsAnExplanationWithoutOpeningABlankEditor() {
         deliver(Intent().putExtra(NotificationHelper.EXTRA_REMINDER_ID, Long.MAX_VALUE))
         compose.waitUntil(timeoutMillis = 5_000) {
+            shadowOf(android.os.Looper.getMainLooper()).idle()
             ShadowToast.getTextOfLatestToast() == "این یادآور دیگر در برنامه نیست"
         }
         org.junit.Assert.assertEquals("این یادآور دیگر در برنامه نیست", ShadowToast.getTextOfLatestToast())

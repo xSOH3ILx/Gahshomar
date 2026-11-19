@@ -8,6 +8,7 @@
             <ImageButton android:id="@+id/month_next" style="@style/WidgetAction" android:src="@drawable/ic_widget_next" android:contentDescription="@string/widget_next_month" />
             <ImageButton android:id="@+id/widget_configure" style="@style/WidgetAction" android:src="@drawable/ic_widget_settings" android:contentDescription="@string/widget_configure" />
         </LinearLayout>
+        <TextView android:id="@+id/month_warning" android:layout_width="match_parent" android:layout_height="16dp" android:gravity="center" android:maxLines="1" android:textSize="10sp" android:visibility="gone" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="20dp" android:orientation="horizontal">
             <TextView android:id="@+id/month_weekday_0" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_0" />
             <TextView android:id="@+id/month_weekday_1" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_1" />

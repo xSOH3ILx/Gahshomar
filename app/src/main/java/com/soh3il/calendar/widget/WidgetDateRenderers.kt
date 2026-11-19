@@ -11,6 +11,7 @@ import com.soh3il.core.designsystem.utils.toPersianDigits
 import com.soh3il.core.jalali.CalendarOccurrences
 import com.soh3il.core.jalali.DateConverter
 import com.soh3il.core.jalali.JalaliDate
+import com.soh3il.core.jalali.IranianHolidays
 import com.soh3il.core.designsystem.theme.FarsiHolidayRed
 import androidx.compose.ui.graphics.toArgb
 
@@ -46,7 +47,9 @@ internal object WidgetDateRenderers {
             WidgetSurface.text(this, R.id.widget_other_dates, dates, colors.secondary, 11f, options)
             setViewVisibility(R.id.widget_other_dates, if (dates.isNotEmpty() && size.height >= 150) View.VISIBLE else View.GONE)
             val occasions = data.occasions(data.today).joinToString("، ") { it.titleFa }
-            WidgetSurface.text(this, R.id.widget_occasion, occasions.ifEmpty { "امروز مناسبتی ثبت نشده" }, colors.secondary, 11f, options)
+            val incompleteLunar = !IranianHolidays.hasOfficialLunarHolidays(data.today.year)
+            val occasionText = if (incompleteLunar) listOf(occasions, "تعطیلات قمری این سال کامل نیست").filter { it.isNotEmpty() }.joinToString("؛ ") else occasions.ifEmpty { "امروز مناسبتی ثبت نشده" }
+            WidgetSurface.text(this, R.id.widget_occasion, occasionText, colors.secondary, 11f, options)
             setViewVisibility(R.id.widget_occasion, if (options.showOccasions && size.height >= 180) View.VISIBLE else View.GONE)
             val next = data.nextToday()
             val summary = next?.let {
@@ -66,9 +69,15 @@ internal object WidgetDateRenderers {
         val colors = WidgetSurface.palette(context, options)
         val counts = if (options.showReminders) data.occurrences(first, first.daysInMonth).groupingBy { it.date }.eachCount() else emptyMap()
         val rows = (first.dayOfWeek - 1 + first.daysInMonth + 6) / 7
-        val interactive = size.width - 20 >= 7 * 48 && size.height - 76 >= rows * 48
+        val warning = !IranianHolidays.hasOfficialLunarHolidays(first.year)
+        val gridHeight = size.height - 76 - if (warning) 16 else 0
+        val interactive = size.width - 20 >= 7 * 48 && gridHeight >= rows * 48
         return RemoteViews(context.packageName, R.layout.widget_calendar_month).apply {
             WidgetSurface.apply(context, this, size, options)
+            WidgetSurface.text(this, R.id.month_warning, "تعطیلات قمری این سال کامل نیست", colors.secondary, 10f, options)
+            setTextViewTextSize(R.id.month_warning, TypedValue.COMPLEX_UNIT_SP,
+                WidgetSurface.fitText(context, "تعطیلات قمری این سال کامل نیست", size.width - 20, 16f, 10f * options.textScale))
+            setViewVisibility(R.id.month_warning, if (warning) View.VISIBLE else View.GONE)
             WidgetSurface.text(this, R.id.month_title, "${month.monthNameFa} ${month.year.toPersianDigits()}", colors.text, 13f, options)
             setTextViewTextSize(R.id.month_title, TypedValue.COMPLEX_UNIT_SP,
                 WidgetSurface.fitText(context, "${month.monthNameFa} ${month.year.toPersianDigits()}", size.width - 164, 48f, 13f * options.textScale))
@@ -97,7 +106,7 @@ internal object WidgetDateRenderers {
                     val label = day.toPersianDigits() + if (count > 0) " ·" else ""
                     setTextViewText(view, label)
                     setTextViewTextSize(view, TypedValue.COMPLEX_UNIT_SP,
-                        WidgetSurface.fitText(context, label, (size.width - 20) / 7, (size.height - 76) / rows, 18f * options.textScale))
+                        WidgetSurface.fitText(context, label, (size.width - 20) / 7, gridHeight / rows, 18f * options.textScale))
                     setInt(view, "setBackgroundColor", if (date == data.today) { if (holiday) FarsiHolidayRed.toArgb() else colors.accent } else Color.TRANSPARENT)
                     setTextColor(view, if (date == data.today) { if (holiday) Color.WHITE else colors.onAccent } else if (holiday) colors.holiday else colors.text)
                     setContentDescription(view, description(date, data.today, holiday, count))
@@ -111,9 +120,15 @@ internal object WidgetDateRenderers {
         val colors = WidgetSurface.palette(context, options)
         val first = CalendarOccurrences.weekStart(data.today)
         val counts = if (options.showReminders) data.occurrences(first, 7).groupingBy { it.date }.eachCount() else emptyMap()
-        val interactive = size.width - 20 >= 7 * 48 && size.height - 56 >= 48
+        val warning = (0..6).any { !IranianHolidays.hasOfficialLunarHolidays(first.plusDays(it.toLong()).year) }
+        val gridHeight = size.height - 56 - if (warning) 16 else 0
+        val interactive = size.width - 20 >= 7 * 48 && gridHeight >= 48
         return RemoteViews(context.packageName, R.layout.widget_calendar_week).apply {
             WidgetSurface.apply(context, this, size, options)
+            WidgetSurface.text(this, R.id.week_warning, "تعطیلات قمری این هفته کامل نیست", colors.secondary, 10f, options)
+            setTextViewTextSize(R.id.week_warning, TypedValue.COMPLEX_UNIT_SP,
+                WidgetSurface.fitText(context, "تعطیلات قمری این هفته کامل نیست", size.width - 20, 16f, 10f * options.textScale))
+            setViewVisibility(R.id.week_warning, if (warning) View.VISIBLE else View.GONE)
             WidgetSurface.text(this, R.id.week_title, "هفتهٔ ${data.today.monthNameFa}", colors.text, 13f, options)
             WidgetSurface.configure(context, this, id, colors)
             setInt(R.id.widget_add, "setColorFilter", colors.accent)
@@ -127,7 +142,7 @@ internal object WidgetDateRenderers {
                 setTextViewText(view, "$name\n${date.day.toPersianDigits()}" + if (count > 0) " ·" else "")
                 setTextViewTextSize(view, TypedValue.COMPLEX_UNIT_SP,
                     WidgetSurface.fitText(context, "$name\n${date.day.toPersianDigits()}" + if (count > 0) " ·" else "",
-                        (size.width - 20) / 7, size.height - 56, 14f * options.textScale))
+                        (size.width - 20) / 7, gridHeight, 14f * options.textScale))
                 setTextColor(view, if (date == data.today) colors.onAccent else if (holiday) colors.holiday else colors.text)
                 setInt(view, "setBackgroundColor", if (date == data.today) colors.accent else Color.TRANSPARENT)
                 setContentDescription(view, description(date, data.today, holiday, count))

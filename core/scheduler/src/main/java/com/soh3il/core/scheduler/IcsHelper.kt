@@ -19,7 +19,7 @@ object IcsHelper {
         IcsParser.exportToIcsString(reminders)
 
     fun importFromIcsStream(inputStream: InputStream): List<Reminder> =
-        IcsParser.importFromIcsStream(inputStream)
+        IcsParser.importFromIcsStream(inputStream, strict = true)
 
     suspend fun importFromIcsUri(context: Context, uri: Uri): List<Reminder> = withContext(Dispatchers.IO) {
         val contentResolver = context.contentResolver
@@ -33,7 +33,7 @@ object IcsHelper {
 
         contentResolver.openInputStream(uri)?.use { stream ->
             importFromIcsStream(stream)
-        } ?: emptyList()
+        } ?: throw java.io.IOException("فایل تقویم باز نشد")
     }
 
     fun shareIcsFile(context: Context, reminders: List<Reminder>) {
