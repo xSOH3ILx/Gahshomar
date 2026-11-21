@@ -121,4 +121,88 @@ object UserPreferences {
     fun setContactBirthdaysEnabled(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_CONTACT_BIRTHDAYS, enabled).apply()
     }
+
+    private const val KEY_SNOOZE_MINUTES = "pref_snooze_minutes"
+    private const val KEY_DEFAULT_REMINDER_MINUTES = "pref_default_reminder_minutes"
+    private const val KEY_QUIET_HOURS_ENABLED = "pref_quiet_hours_enabled"
+    private const val KEY_QUIET_START_MINUTE = "pref_quiet_start_minute"
+    private const val KEY_QUIET_END_MINUTE = "pref_quiet_end_minute"
+    private const val KEY_AUTO_BACKUP_ENABLED = "pref_auto_backup_enabled"
+    private const val KEY_AUTO_BACKUP_LAST = "pref_auto_backup_last"
+    private const val KEY_DEFAULT_CALENDAR = "pref_default_calendar"
+    private const val KEY_WIDGET_THEME = "pref_widget_theme"
+
+    val SNOOZE_OPTIONS_MINUTES = listOf(5, 10, 15, 30, 60)
+
+    fun getSnoozeMinutes(context: Context): Int =
+        getPrefs(context).getInt(KEY_SNOOZE_MINUTES, 10)
+
+    fun setSnoozeMinutes(context: Context, minutes: Int) {
+        getPrefs(context).edit().putInt(KEY_SNOOZE_MINUTES, minutes).apply()
+    }
+
+    val DEFAULT_REMINDER_OPTIONS_MINUTES = listOf(-1, 0, 5, 10, 15, 30, 60)
+
+    fun getDefaultReminderMinutes(context: Context): Int =
+        getPrefs(context).getInt(KEY_DEFAULT_REMINDER_MINUTES, -1)
+
+    fun setDefaultReminderMinutes(context: Context, minutes: Int) {
+        getPrefs(context).edit().putInt(KEY_DEFAULT_REMINDER_MINUTES, minutes).apply()
+    }
+
+    fun isQuietHoursEnabled(context: Context): Boolean =
+        getPrefs(context).getBoolean(KEY_QUIET_HOURS_ENABLED, false)
+
+    fun setQuietHoursEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_QUIET_HOURS_ENABLED, enabled).apply()
+    }
+
+    fun getQuietStartMinute(context: Context): Int =
+        getPrefs(context).getInt(KEY_QUIET_START_MINUTE, 22 * 60)
+
+    fun setQuietStartMinute(context: Context, minuteOfDay: Int) {
+        getPrefs(context).edit().putInt(KEY_QUIET_START_MINUTE, minuteOfDay).apply()
+    }
+
+    fun getQuietEndMinute(context: Context): Int =
+        getPrefs(context).getInt(KEY_QUIET_END_MINUTE, 7 * 60)
+
+    fun setQuietEndMinute(context: Context, minuteOfDay: Int) {
+        getPrefs(context).edit().putInt(KEY_QUIET_END_MINUTE, minuteOfDay).apply()
+    }
+
+    fun isAutoBackupEnabled(context: Context): Boolean =
+        getPrefs(context).getBoolean(KEY_AUTO_BACKUP_ENABLED, false)
+
+    fun setAutoBackupEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_AUTO_BACKUP_ENABLED, enabled).apply()
+    }
+
+    fun getAutoBackupLastAt(context: Context): Long =
+        getPrefs(context).getLong(KEY_AUTO_BACKUP_LAST, 0L)
+
+    fun setAutoBackupLastAt(context: Context, epochMillis: Long) {
+        getPrefs(context).edit().putLong(KEY_AUTO_BACKUP_LAST, epochMillis).apply()
+    }
+
+    fun getDefaultCalendar(context: Context): String =
+        getPrefs(context).getString(KEY_DEFAULT_CALENDAR, "JALALI") ?: "JALALI"
+
+    fun setDefaultCalendar(context: Context, calendarName: String) {
+        getPrefs(context).edit().putString(KEY_DEFAULT_CALENDAR, calendarName).apply()
+    }
+
+    fun getWidgetTheme(context: Context): String =
+        getPrefs(context).getString(KEY_WIDGET_THEME, "SYSTEM") ?: "SYSTEM"
+
+    fun setWidgetTheme(context: Context, themeName: String) {
+        getPrefs(context).edit().putString(KEY_WIDGET_THEME, themeName).apply()
+    }
+
+    fun isQuietPeriodActive(context: Context, minuteOfDay: Int): Boolean {
+        if (!isQuietHoursEnabled(context)) return false
+        val start = getQuietStartMinute(context)
+        val end = getQuietEndMinute(context)
+        return if (start <= end) minuteOfDay in start until end else minuteOfDay >= start || minuteOfDay < end
+    }
 }

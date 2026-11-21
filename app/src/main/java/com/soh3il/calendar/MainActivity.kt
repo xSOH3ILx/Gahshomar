@@ -266,6 +266,17 @@ class MainActivity : ComponentActivity() {
                                             android.widget.Toast.makeText(this@MainActivity, "فایل خروجی ساخته نشد؛ اطلاعات یادآورها را بررسی کنید.", android.widget.Toast.LENGTH_LONG).show()
                                         }
                                     },
+                                    onAutoBackupToggled = { enabled ->
+                                        UserPreferences.setAutoBackupEnabled(this@MainActivity, enabled)
+                                        if (enabled) {
+                                            coroutineScope.launch(Dispatchers.IO) {
+                                                com.soh3il.core.scheduler.IcsHelper.runAutoBackupIfNeeded(this@MainActivity, reminders)
+                                            }
+                                        }
+                                    },
+                                    onDefaultCalendarSelected = { name ->
+                                        UserPreferences.setDefaultCalendar(this@MainActivity, name)
+                                    },
                                     onImportIcsUri = { uri ->
                                         coroutineScope.launch(Dispatchers.IO) {
                                             val result = try { ReminderMutations.importIcs(context, db, uri) }

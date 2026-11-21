@@ -44,14 +44,12 @@ class WidgetUpdateTest {
     @Test fun failedReadShowsAnExplicitErrorInsteadOfAnEmptySuccessfulAgenda() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         bind(context, 104, WidgetKind.AGENDA)
-        try {
-            WidgetUpdates.refresh(context) { throw java.io.IOException("unavailable") }
-            fail("Read errors must remain observable")
-        } catch (expected: java.io.IOException) {
-            val root = shadowOf(AppWidgetManager.getInstance(context)).getViewFor(104)
-            assertTrue(root.findViewById<TextView>(R.id.widget_error_message).text.toString().contains("در دسترس نیست"))
-            assertTrue(root.findViewById<TextView>(R.id.widget_error_date).text.isNotEmpty())
+        assertThrows(java.io.IOException::class.java) {
+            runBlocking { WidgetUpdates.refresh(context) { throw java.io.IOException("unavailable") } }
         }
+        val root = shadowOf(AppWidgetManager.getInstance(context)).getViewFor(104)
+        assertTrue(root.findViewById<TextView>(R.id.widget_error_message).text.toString().contains("در دسترس نیست"))
+        assertTrue(root.findViewById<TextView>(R.id.widget_error_date).text.isNotEmpty())
     }
 
     @Test fun damagedInstanceDoesNotPreventOtherInstancesFromRefreshing() = runBlocking {
@@ -80,15 +78,15 @@ class WidgetUpdateTest {
     @Test fun timedOutRefreshShowsAnErrorInsteadOfStaleWidgetData() = runBlocking {
         val context = RuntimeEnvironment.getApplication()
         bind(context, 112, WidgetKind.DAILY)
-        try {
-            WidgetUpdates.refreshWithinDeadline(context, timeoutMs = 50) {
-                kotlinx.coroutines.delay(500); emptyList()
+        assertThrows(kotlinx.coroutines.TimeoutCancellationException::class.java) {
+            runBlocking {
+                WidgetUpdates.refreshWithinDeadline(context, timeoutMs = 50) {
+                    kotlinx.coroutines.delay(500); emptyList()
+                }
             }
-            fail("Expected timeout")
-        } catch (expected: kotlinx.coroutines.TimeoutCancellationException) {
-            val root = shadowOf(AppWidgetManager.getInstance(context)).getViewFor(112)
-            assertTrue(root.findViewById<TextView>(R.id.widget_error_message).text.toString().contains("در دسترس نیست"))
         }
+        val root = shadowOf(AppWidgetManager.getInstance(context)).getViewFor(112)
+        assertTrue(root.findViewById<TextView>(R.id.widget_error_message).text.toString().contains("در دسترس نیست"))
     }
 
 }

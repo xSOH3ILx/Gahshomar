@@ -17,16 +17,23 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.soh3il.core.database.preferences.UserPreferences
 import com.soh3il.core.designsystem.components.FarsiCard
 import com.soh3il.feature.settings.components.SettingsSectionHeader
 
@@ -36,7 +43,9 @@ fun ToolsSection(
     onExportIcsClick: (() -> Unit)?,
     importIcsLauncher: ActivityResultLauncher<String>,
     onSyncCalendarClick: (() -> Unit)? = null,
-    onWidgetsClick: (() -> Unit)? = null
+    onWidgetsClick: (() -> Unit)? = null,
+    onAutoBackupToggled: ((Boolean) -> Unit)? = null,
+    onDefaultCalendarSelected: ((String) -> Unit)? = null
 ) {
     SettingsSectionHeader(
         title = "ابزارها و گاه‌شماری",
@@ -127,6 +136,62 @@ fun ToolsSection(
                     Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("ورود ICS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Auto backup toggle
+            val context = androidx.compose.ui.platform.LocalContext.current
+            var autoBackup by remember { mutableStateOf(UserPreferences.isAutoBackupEnabled(context)) }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "پشتیبان‌گیری خودکار روزانه",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "هر ۲۴ ساعت یک فایل ICS در پوشه اختصاصی اپ (Android/data) ذخیره می‌شود؛ ۷ نسخه آخر نگه داشته می‌شود.",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 16.sp
+                    )
+                }
+                Switch(
+                    checked = autoBackup,
+                    onCheckedChange = { enabled ->
+                        autoBackup = enabled
+                        onAutoBackupToggled?.invoke(enabled)
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Default calendar for new reminders
+            var defaultCalendar by remember { mutableStateOf(UserPreferences.getDefaultCalendar(context)) }
+            Text(
+                text = "تقویم پیش‌فرض رویدادهای جدید:",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
+                listOf("JALALI" to "جلالی", "GREGORIAN" to "میلادی", "HIJRI" to "قمری").forEach { (name, label) ->
+                    FilterChip(
+                        selected = defaultCalendar == name,
+                        onClick = {
+                            defaultCalendar = name
+                            onDefaultCalendarSelected?.invoke(name)
+                        },
+                        label = { Text(label, fontSize = 12.sp) }
+                    )
                 }
             }
 

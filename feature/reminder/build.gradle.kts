@@ -43,6 +43,7 @@ dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:jalali"))
     implementation(project(":core:designsystem"))
+    implementation(project(":core:database"))
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)

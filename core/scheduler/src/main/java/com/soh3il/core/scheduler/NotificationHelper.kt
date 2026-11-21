@@ -13,6 +13,7 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.soh3il.core.database.preferences.UserPreferences
+import com.soh3il.core.designsystem.utils.toPersianDigits
 
 object NotificationHelper {
 
@@ -78,6 +79,17 @@ object NotificationHelper {
         manager.createNotificationChannel(channel)
     }
 
+    fun refreshChannelsForQuietHours(context: Context) {
+        updateNotificationChannelSound(context, UserPreferences.getNotificationSoundUri(context)?.let { Uri.parse(it) })
+    }
+
+    fun isQuietPeriodActiveNow(context: Context): Boolean {
+        if (!UserPreferences.isQuietHoursEnabled(context)) return false
+        val calendar = java.util.Calendar.getInstance()
+        val minuteOfDay = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+        return UserPreferences.isQuietPeriodActive(context, minuteOfDay)
+    }
+
     fun canPostNotifications(context: Context, channelId: String? = null): Boolean {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (!manager.areNotificationsEnabled()) return false
@@ -124,6 +136,8 @@ object NotificationHelper {
         createNotificationChannel(context)
         if (!canPostNotifications(context, channelId(context))) return false
         val soundUri = getEffectiveSoundUri(context)
+        val snoozeMinutes = UserPreferences.getSnoozeMinutes(context)
+        val quietNow = isQuietPeriodActiveNow(context)
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notificationId = AlarmScheduler.computeAlarmRequestCode(reminderId, preOffsetMinutes)
@@ -159,12 +173,12 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Action 2: Snooze 10 minutes
+        // Action 2: Snooze
         val snoozeIntent = Intent(context, AlarmReceiver::class.java).apply {
             action = ACTION_SNOOZE_REMINDER
             data = AlarmIdentity.uri(reminderId, preOffsetMinutes, "snooze")
             putExtra(EXTRA_REMINDER_ID, reminderId)
-            putExtra(EXTRA_SNOOZE_MINUTES, 10)
+            putExtra(EXTRA_SNOOZE_MINUTES, snoozeMinutes)
             putExtra(AlarmScheduler.EXTRA_PRE_OFFSET_MINUTES, preOffsetMinutes)
         }
         val snoozePendingIntent = PendingIntent.getBroadcast(
@@ -177,16 +191,22 @@ object NotificationHelper {
         val displayTitle = if (isPreReminder) "پیش‌یادآور: $title" else title
 
         val builder = NotificationCompat.Builder(context, channelId(context))
-            .setSmallIcon(android.R.drawable.ic_popup_reminder)
+            .setSmallIcon(com.soh3il.core.designsystem.R.drawable.ic_stat_calendar)
             .setContentTitle(displayTitle)
             .setContentText(description.ifEmpty { "زمان سررسید این رویداد فرا رسیده است." })
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setAutoCancel(true)
-            .setSound(soundUri)
+            .apply {
+                if (quietNow) {
+                    setVibrate(longArrayOf(0))
+                } else {
+                    setSound(soundUri)
+                }
+            }
             .setContentIntent(contentPendingIntent)
             .addAction(0, "انجام شد", donePendingIntent)
-            .addAction(0, "تعویق ۱۰ دقیقه‌ای", snoozePendingIntent)
+            .addAction(0, "تعویق ${snoozeMinutes.toString().toPersianDigits()} دقیقه‌ای", snoozePendingIntent)
 
         return try {
             notificationManager.notify(AlarmIdentity.notificationTag(reminderId, preOffsetMinutes), notificationId, builder.build())

@@ -77,4 +77,57 @@ class NotificationSettingsTest {
         assertEquals("محتوای تقویم پنهان است", notification.publicVersion.extras.getCharSequence("android.text").toString())
     }
 
+    @Test fun quietPeriodCalculationHandlesNormalAndOvernightSpans() {
+        // Disabled quiet hours always returns false
+        UserPreferences.setQuietHoursEnabled(context, false)
+        assertFalse(UserPreferences.isQuietPeriodActive(context, 23 * 60))
+
+        // Overnight span: 22:00 to 07:00
+        UserPreferences.setQuietHoursEnabled(context, true)
+        UserPreferences.setQuietStartMinute(context, 22 * 60)
+        UserPreferences.setQuietEndMinute(context, 7 * 60)
+
+        assertTrue(UserPreferences.isQuietPeriodActive(context, 23 * 60))
+        assertTrue(UserPreferences.isQuietPeriodActive(context, 22 * 60))
+        assertTrue(UserPreferences.isQuietPeriodActive(context, 0))
+        assertTrue(UserPreferences.isQuietPeriodActive(context, 6 * 60 + 59))
+        assertFalse(UserPreferences.isQuietPeriodActive(context, 7 * 60))
+        assertFalse(UserPreferences.isQuietPeriodActive(context, 12 * 60))
+
+        // Daytime span: 13:00 to 15:00
+        UserPreferences.setQuietStartMinute(context, 13 * 60)
+        UserPreferences.setQuietEndMinute(context, 15 * 60)
+        assertFalse(UserPreferences.isQuietPeriodActive(context, 12 * 60))
+        assertTrue(UserPreferences.isQuietPeriodActive(context, 13 * 60))
+        assertTrue(UserPreferences.isQuietPeriodActive(context, 14 * 60))
+        assertFalse(UserPreferences.isQuietPeriodActive(context, 15 * 60))
+    }
+
+    @Test fun newPreferenceAccessorsPersistAndDefaultCorrectly() {
+        assertEquals(10, UserPreferences.getSnoozeMinutes(context))
+        UserPreferences.setSnoozeMinutes(context, 15)
+        assertEquals(15, UserPreferences.getSnoozeMinutes(context))
+
+        assertEquals(-1, UserPreferences.getDefaultReminderMinutes(context))
+        UserPreferences.setDefaultReminderMinutes(context, 30)
+        assertEquals(30, UserPreferences.getDefaultReminderMinutes(context))
+
+        assertFalse(UserPreferences.isAutoBackupEnabled(context))
+        UserPreferences.setAutoBackupEnabled(context, true)
+        assertTrue(UserPreferences.isAutoBackupEnabled(context))
+
+        assertEquals(0L, UserPreferences.getAutoBackupLastAt(context))
+        val now = 1700000000000L
+        UserPreferences.setAutoBackupLastAt(context, now)
+        assertEquals(now, UserPreferences.getAutoBackupLastAt(context))
+
+        assertEquals("JALALI", UserPreferences.getDefaultCalendar(context))
+        UserPreferences.setDefaultCalendar(context, "GREGORIAN")
+        assertEquals("GREGORIAN", UserPreferences.getDefaultCalendar(context))
+
+        assertEquals("SYSTEM", UserPreferences.getWidgetTheme(context))
+        UserPreferences.setWidgetTheme(context, "DARK")
+        assertEquals("DARK", UserPreferences.getWidgetTheme(context))
+    }
+
 }

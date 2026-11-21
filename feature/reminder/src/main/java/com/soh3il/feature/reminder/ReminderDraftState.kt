@@ -11,7 +11,11 @@ import com.soh3il.core.model.PreReminderUnit
 import com.soh3il.core.model.RecurrenceType
 import com.soh3il.core.model.Reminder
 
-internal class ReminderDraftState(initialDate: JalaliDate, existingReminder: Reminder?) {
+internal class ReminderDraftState(
+    initialDate: JalaliDate,
+    existingReminder: Reminder?,
+    defaultPreReminderMinutes: Int? = null
+) {
     private val initialPreMinutes = existingReminder?.preReminders?.firstOrNull()?.toMinutes()?.toInt()
     var selectedDate by mutableStateOf(existingReminder?.let { JalaliDate(it.jalaliYear, it.jalaliMonth, it.jalaliDay) } ?: initialDate)
     var title by mutableStateOf(existingReminder?.title ?: "")
@@ -25,7 +29,10 @@ internal class ReminderDraftState(initialDate: JalaliDate, existingReminder: Rem
     var recurrenceInterval by mutableIntStateOf(existingReminder?.recurrence?.interval ?: 1)
     var showCustomRecurrenceDialog by mutableStateOf(false)
     var recurrenceExpanded by mutableStateOf(false)
-    var selectedPreReminderMinutes by mutableStateOf(initialPreMinutes?.takeIf { it in listOf(15, 30, 60, 1440, 2880) })
+    var selectedPreReminderMinutes by mutableStateOf(
+        initialPreMinutes?.takeIf { it in listOf(15, 30, 60, 1440, 2880) }
+            ?: (if (existingReminder == null && (defaultPreReminderMinutes ?: -1) >= 0) defaultPreReminderMinutes else null)
+    )
     var customPreReminder by mutableStateOf(existingReminder?.preReminders?.firstOrNull()?.takeIf { it.toMinutes().toInt() !in listOf(15, 30, 60, 1440, 2880) })
     var isCustomPreReminderSelected by mutableStateOf(customPreReminder != null)
     var showCustomPreReminderDialog by mutableStateOf(false)

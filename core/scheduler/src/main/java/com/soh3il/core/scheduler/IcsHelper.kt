@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import com.soh3il.core.jalali.IcsParser
 import com.soh3il.core.model.Reminder
+import com.soh3il.core.database.preferences.UserPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -55,5 +56,23 @@ object IcsHelper {
         }
 
         context.startActivity(Intent.createChooser(shareIntent, "اشتراک فایل تقویم"))
+    }
+
+    fun runAutoBackupIfNeeded(context: Context, reminders: List<Reminder>) {
+        if (!UserPreferences.isAutoBackupEnabled(context)) return
+        val last = UserPreferences.getAutoBackupLastAt(context)
+        val now = System.currentTimeMillis()
+        val dayMs = 24L * 60L * 60L * 1000L
+        if (last != 0L && now - last < dayMs) return
+        try {
+            val icsData = exportToIcsString(reminders)
+            val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
+            val backupDir = File(baseDir, "backups").apply { if (!exists()) mkdirs() }
+            val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date(now))
+            File(backupDir, "SOH3IL_backup_$stamp.ics").writeText(icsData, Charsets.UTF_8)
+            backupDir.listFiles()?.sortedByDescending { it.name }?.drop(7)?.forEach { it.delete() }
+            UserPreferences.setAutoBackupLastAt(context, now)
+        } catch (_: Exception) {
+        }
     }
 }

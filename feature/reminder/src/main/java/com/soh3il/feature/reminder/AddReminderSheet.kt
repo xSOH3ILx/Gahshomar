@@ -73,7 +73,13 @@ fun AddReminderSheet(
     val context = LocalContext.current
 
     val draft = rememberSaveable(existingReminder?.id, saver = ReminderDraftState.Saver) {
-        ReminderDraftState(initialDate, existingReminder)
+        ReminderDraftState(
+            initialDate,
+            existingReminder,
+            defaultPreReminderMinutes = if (existingReminder == null) {
+                com.soh3il.core.database.preferences.UserPreferences.getDefaultReminderMinutes(context)
+            } else null
+        )
     }
     with(draft) {
         ModalBottomSheet(

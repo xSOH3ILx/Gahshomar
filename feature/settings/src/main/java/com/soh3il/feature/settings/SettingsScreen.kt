@@ -67,6 +67,8 @@ fun SettingsScreen(
     currentVersionName: String = "1.0.0",
     onPersistentNotificationToggled: ((Boolean) -> Unit)? = null,
     onExportIcsClick: (() -> Unit)? = null,
+    onAutoBackupToggled: ((Boolean) -> Unit)? = null,
+    onDefaultCalendarSelected: ((String) -> Unit)? = null,
     onImportIcsUri: ((Uri) -> Unit)? = null,
     onSyncCalendarClick: (() -> Unit)? = null,
     contactBirthdaysEnabled: Boolean = false,
@@ -289,6 +291,8 @@ fun SettingsScreen(
             onOpenDateConverter = { showDateConverterDialog = true },
             onWidgetsClick = onWidgetsClick,
             onExportIcsClick = onExportIcsClick,
+            onAutoBackupToggled = onAutoBackupToggled,
+            onDefaultCalendarSelected = onDefaultCalendarSelected,
             importIcsLauncher = importIcsLauncher,
             onSyncCalendarClick = onSyncCalendarClick
         )

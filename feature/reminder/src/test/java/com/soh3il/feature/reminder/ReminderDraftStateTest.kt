@@ -62,4 +62,21 @@ class ReminderDraftStateTest {
         assertTrue(restored.preReminderExpanded)
         assertNull(restored.selectedPreReminderMinutes)
     }
+
+    @Test fun newReminderUsesDefaultPreReminderWhenProvided() {
+        val draft = ReminderDraftState(JalaliDate(1405, 8, 23), null, defaultPreReminderMinutes = 15)
+        assertEquals(15, draft.selectedPreReminderMinutes)
+
+        val draftNone = ReminderDraftState(JalaliDate(1405, 8, 23), null, defaultPreReminderMinutes = -1)
+        assertNull(draftNone.selectedPreReminderMinutes)
+    }
+
+    @Test fun existingReminderPreservesOwnPreReminderRegardlessOfDefault() {
+        val reminder = Reminder(
+            id = 10, title = "test", jalaliYear = 1405, jalaliMonth = 8, jalaliDay = 23,
+            hour = 12, minute = 0, preReminders = listOf(PreReminder(30, PreReminderUnit.MINUTES))
+        )
+        val draft = ReminderDraftState(JalaliDate(1405, 8, 23), reminder, defaultPreReminderMinutes = 60)
+        assertEquals(30, draft.selectedPreReminderMinutes)
+    }
 }
