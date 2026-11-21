@@ -113,11 +113,14 @@ object CalendarProviderSync {
         cursor.use {
             while (it.moveToNext()) {
                 val description = it.getString(1).orEmpty()
-                if (description.substringAfterLast('\n') == marker) {
+                if (marker in description) {
+                    // A marker found mid-description means the user edited the note:
+                    // never overwrite it or insert a duplicate beside it.
+                    if (description.substringAfterLast('\n') != marker) {
+                        throw IOException("نشانگر یادآور در تقویم دستکاری شده است؛ رویداد را دستی بررسی کنید.")
+                    }
                     if (match != null) throw IOException("چند رویداد با نشانگر یکسان وجود دارد؛ تقویم دستگاه را بررسی کنید.")
                     match = it.getLong(0)
-                } else if (description.contains(marker)) {
-                    throw IOException("نشانگر رویداد تغییر کرده است؛ تقویم دستگاه را بررسی کنید.")
                 }
             }
         }

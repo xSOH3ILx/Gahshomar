@@ -136,7 +136,7 @@ internal fun jdnFromPersian(year: Int, month: Int, dayOfMonth: Int): Long {
 
 // Expose this so the app can display Julian date for now
 // but it's unstable and maybe we would decide to expose it differently
-fun julianFromJdn(jdn: Long): DateTriplet = julianFromFixed((jdn - OFFSET_JDN).toInt())
+internal fun julianFromJdn(jdn: Long): DateTriplet = julianFromFixed((jdn - OFFSET_JDN).toInt())
 
 internal fun jdnFromCivil(year: Int, month: Int, dayOfMonth: Int): Long {
     return OFFSET_JDN + if (

@@ -80,25 +80,33 @@ internal class ReminderDraftState(initialDate: JalaliDate, existingReminder: Rem
                 )
             },
             restore = { values ->
-                ReminderDraftState(JalaliDate.fromJdn(values.getValue("selectedDate") as Long), null).apply {
-                    selectedDate = JalaliDate.fromJdn(values.getValue("selectedDate") as Long)
-                    title = values.getValue("title") as String
-                    description = values.getValue("description") as String
+                @Suppress("UNCHECKED_CAST")
+                ReminderDraftState(
+                    JalaliDate.fromJdn((values["selectedDate"] as? Long) ?: JalaliDate.now().toJdn()),
+                    null
+                ).apply {
+                    selectedDate = JalaliDate.fromJdn((values["selectedDate"] as? Long) ?: JalaliDate.now().toJdn())
+                    title = values["title"] as? String ?: ""
+                    description = values["description"] as? String ?: ""
                     reminderEnabled = values["reminderEnabled"] as? Boolean ?: true
-                    selectedHour = values.getValue("selectedHour") as Int
-                    selectedMinute = values.getValue("selectedMinute") as Int
-                    selectedColorHex = values.getValue("selectedColorHex") as String
-                    showTimePickerDialog = values.getValue("showTimePickerDialog") as Boolean
-                    recurrenceType = RecurrenceType.valueOf(values.getValue("recurrenceType") as String)
-                    recurrenceInterval = values.getValue("recurrenceInterval") as Int
-                    showCustomRecurrenceDialog = values.getValue("showCustomRecurrenceDialog") as Boolean
-                    recurrenceExpanded = values.getValue("recurrenceExpanded") as Boolean
+                    selectedHour = values["selectedHour"] as? Int ?: 9
+                    selectedMinute = values["selectedMinute"] as? Int ?: 0
+                    selectedColorHex = values["selectedColorHex"] as? String ?: "#2563EB"
+                    showTimePickerDialog = values["showTimePickerDialog"] as? Boolean ?: false
+                    recurrenceType = (values["recurrenceType"] as? String)
+                        ?.let { runCatching { RecurrenceType.valueOf(it) }.getOrNull() } ?: RecurrenceType.NONE
+                    recurrenceInterval = values["recurrenceInterval"] as? Int ?: 1
+                    showCustomRecurrenceDialog = values["showCustomRecurrenceDialog"] as? Boolean ?: false
+                    recurrenceExpanded = values["recurrenceExpanded"] as? Boolean ?: false
                     selectedPreReminderMinutes = values["selectedPreReminderMinutes"] as Int?
-                    customPreReminder = (values["customPreReminder"] as String?)?.split('|')?.let { PreReminder(it[0].toInt(), PreReminderUnit.valueOf(it[1])) }
-                    isCustomPreReminderSelected = values.getValue("isCustomPreReminderSelected") as Boolean
-                    showCustomPreReminderDialog = values.getValue("showCustomPreReminderDialog") as Boolean
-                    preReminderExpanded = values.getValue("preReminderExpanded") as Boolean
-                    showDeleteConfirmDialog = values.getValue("showDeleteConfirmDialog") as Boolean
+                    customPreReminder = (values["customPreReminder"] as String?)
+                        ?.split('|')
+                        ?.takeIf { it.size == 2 && it[0].toIntOrNull() != null }
+                        ?.let { PreReminder(it[0].toInt(), runCatching { PreReminderUnit.valueOf(it[1]) }.getOrDefault(PreReminderUnit.MINUTES)) }
+                    isCustomPreReminderSelected = values["isCustomPreReminderSelected"] as? Boolean ?: (customPreReminder != null)
+                    showCustomPreReminderDialog = values["showCustomPreReminderDialog"] as? Boolean ?: false
+                    preReminderExpanded = values["preReminderExpanded"] as? Boolean ?: false
+                    showDeleteConfirmDialog = values["showDeleteConfirmDialog"] as? Boolean ?: false
                 }
             }
         )

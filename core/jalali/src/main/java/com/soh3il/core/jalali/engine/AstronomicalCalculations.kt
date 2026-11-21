@@ -312,7 +312,7 @@ internal fun estimatePriorSolarLongitude(lamda: Double, tee: Double): Double {
 
 /** The value of x shifted into the range [a..b). Returns x if a=b. */
 private fun mod3(x: Double, a: Int, b: Int): Double =
-    if (a == b) x else a + (x - a) % (b - a)
+    if (a == b) x else a + (x - a).mod((b - a).toDouble())
 
 /** Sum powers of x with coefficients (from order 0 up) in list a. */
 private fun poly(indeterminate: Double, coefficients: DoubleArray): Double {

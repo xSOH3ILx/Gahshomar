@@ -146,7 +146,7 @@ class MainActivity : ComponentActivity() {
                 val tabState = rememberSaveableStateHolder()
 
                 val remindersState by db.reminderDao().getAllReminders().collectAsState(initial = null)
-                val reminders = remindersState.orEmpty().map { it.toDomain() }
+                val reminders = remember(remindersState) { remindersState.orEmpty().map { it.toDomain() } }
                 val editingReminder = reminders.firstOrNull { it.id == editingReminderId }
                 ResolveReminderEntry(notificationReminderId, reminders.takeIf { remindersState != null }) {
                     widgetDestination = it

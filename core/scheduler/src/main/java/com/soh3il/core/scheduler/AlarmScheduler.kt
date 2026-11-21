@@ -7,7 +7,6 @@ import android.content.Intent
 import android.os.Build
 import com.soh3il.core.jalali.JalaliRecurrenceEngine
 import com.soh3il.core.model.Reminder
-import java.util.Objects
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -27,19 +26,24 @@ object AlarmScheduler {
      */
     const val SNOOZE_OFFSET = -1
 
+    private const val ACTION_SLOT_STRIDE = 1
+
     /**
-     * Deterministic composite request code and notification ID generator
-     * The URI and notification tag disambiguate collisions in this mandated hash.
+     * Deterministic collision-free request code and notification ID generator.
+     * The reminder id occupies the low 20 bits and the offset/slot the high bits,
+     * so distinct pairs never share a code. The result is always >= 0x100000,
+     * which also keeps it clear of the fixed persistent-notification ids (2001/2002).
      */
     fun computeAlarmRequestCode(reminderId: Long, preOffsetMinutes: Int): Int {
-        return Objects.hash(reminderId, preOffsetMinutes)
+        val displacement = (preOffsetMinutes + 1).coerceIn(0, 0x7FF)
+        return (displacement shl 20) or (reminderId and 0xFFFFF).toInt()
     }
 
     /**
      * Notification action PendingIntents must not share the alarm request-code space.
      */
     fun actionRequestCode(reminderId: Long, preOffsetMinutes: Int, actionSlot: Int): Int {
-        return Objects.hash(reminderId, preOffsetMinutes, actionSlot)
+        return computeAlarmRequestCode(reminderId, preOffsetMinutes) + actionSlot * ACTION_SLOT_STRIDE
     }
 
     /**
@@ -209,6 +213,7 @@ object AlarmScheduler {
                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             }
         } catch (_: SecurityException) {
+            android.util.Log.w("AlarmScheduler", "exact alarm permission revoked; falling back to inexact alarm")
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         } catch (_: Exception) {
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)

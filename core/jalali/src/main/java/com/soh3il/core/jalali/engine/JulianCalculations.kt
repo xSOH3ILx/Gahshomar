@@ -17,11 +17,6 @@ private val JULIAN_EPOCH = fixedFromGregorian(0, 12, 30)
 private fun julianLeapYear(jYear: Int): Boolean = (jYear % 4) == (if (jYear > 0) 0 else 3)
 
 /**
- * True if jYear is a leap year on the Julian calendar.
- */
-private fun isJulianLeapYear(jYear: Int): Boolean = jYear % 4 == (if (jYear > 0) 0 else 3)
-
-/**
  * Fixed date equivalent to the Julian date.
  */
 internal fun fixedFromJulian(year: Int, month: Int, day: Int): Int {
@@ -49,7 +44,7 @@ internal fun julianFromFixed(date: Int): DateTriplet {
 
     // To simulate a 30-day Feb
     val correction = if (date < fixedFromJulian(year, 3, 1)) 0 else {
-        if (isJulianLeapYear(year)) 1 else 2
+        if (julianLeapYear(year)) 1 else 2
     }
 
     // Assuming a 30-day Feb
