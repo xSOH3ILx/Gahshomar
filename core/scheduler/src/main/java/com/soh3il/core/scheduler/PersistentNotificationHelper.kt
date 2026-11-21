@@ -134,8 +134,7 @@ object PersistentNotificationHelper {
         // Today's active reminders count (including recurring reminders)
         val todayRemindersCount = reminders?.count { it.matchesDate(today) }
 
-        // تفکیک خطوط به شکل ساختاریافته، کاملاً راست‌چین و بدون فشردگی خطی (بدون ایموجی طبق قوانین طراحی برنامه)
-        val lineJalali = "${rlm}تقویم خورشیدی: ${today.dayOfWeekNameFa}، ${today.day.toPersianDigits()} ${today.monthNameFa} ${today.year.toPersianDigits()}"
+        // در نمای بزرگ (InboxStyle) خط جلالی تکراری حذف می‌شود؛ عنوان بزرگ همان تاریخ جلالی است.
         val showGregorian = UserPreferences.isPersistentGregorianEnabled(context)
         val showHijri = UserPreferences.isPersistentHijriEnabled(context)
         val lineGregorian = if (showGregorian) {
@@ -145,12 +144,13 @@ object PersistentNotificationHelper {
             "${rlm}تقویم هجری قمری محاسباتی: $hijriStr"
         } else null
 
+        // خط مناسبت‌ها فقط وقتی مناسبت واقعی وجود دارد نمایش داده می‌شود (کاهش نویز).
+        val lunarIncomplete = !IranianHolidays.hasOfficialLunarHolidays(today.year)
         val lineOccasions = if (occasions.isNotEmpty()) {
             "${rlm}رویدادها: " + occasions.joinToString("، ") { it.titleFa } +
-                if (!IranianHolidays.hasOfficialLunarHolidays(today.year)) " (اطلاعات قمری ناقص است)" else ""
+                if (lunarIncomplete) " (اطلاعات قمری ناقص است)" else ""
         } else {
-            if (!IranianHolidays.hasOfficialLunarHolidays(today.year)) "${rlm}اطلاعات تعطیلات قمری این سال کامل نیست"
-            else "${rlm}رویدادها: مناسبتی ثبت نشده است"
+            null
         }
 
         val lineReminders = if (todayRemindersCount == null) {
@@ -162,7 +162,6 @@ object PersistentNotificationHelper {
         }
 
         val notificationLines = listOfNotNull(
-            lineJalali,
             lineGregorian,
             lineHijri,
             lineOccasions,
@@ -255,7 +254,7 @@ object PersistentNotificationHelper {
             .setShowWhen(false)
             .setContentIntent(contentPendingIntent)
             .setDeleteIntent(deletePendingIntent)
-            .addAction(android.R.drawable.ic_input_add, "افزودن یادآور", addReminderPendingIntent)
+            .addAction(com.soh3il.core.designsystem.R.drawable.ic_action_add_reminder, "افزودن یادآور", addReminderPendingIntent)
 
         // تنظیم تضمینی آیکون روز در نوار وضعیت با شناسه منبع استاندارد اندروید
         builder.setSmallIcon(smallIconRes)

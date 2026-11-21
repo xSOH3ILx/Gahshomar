@@ -23,14 +23,14 @@ internal object DateNotificationAssets {
         val cornerRadius = sizePx * 0.24f
         val fullRect = android.graphics.RectF(0f, 0f, sizePx.toFloat(), sizePx.toFloat())
 
-        // پس‌زمینه خنثی آیکون و اعلان (خاکستری Expressive)
+        // پس‌زمینه برند اپ (سبز فسفری SOH3IL) با کنتراست یکنواخت در تم روشن و تیره
         val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(91, 98, 106)
+            color = Color.rgb(35, 39, 43)
             style = Paint.Style.FILL
         }
         canvas.drawRoundRect(fullRect, cornerRadius, cornerRadius, bgPaint)
 
-        // نوار بالایی نام ماه با سبز فسفری خوانا
+        // نوار بالایی نام ماه — بدنه تیره برند با نوار روشن برای کنتراست بالا در هر دو تم
         val headerHeight = sizePx * 0.34f
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(215, 255, 74)
