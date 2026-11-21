@@ -73,7 +73,7 @@ class NotificationSettingsTest {
         assertEquals(android.app.Notification.VISIBILITY_PRIVATE, notification.visibility)
         assertEquals(com.soh3il.core.designsystem.R.drawable.ic_stat_calendar, notification.smallIcon.resId)
         assertEquals(com.soh3il.core.designsystem.R.drawable.ic_stat_calendar, notification.publicVersion.smallIcon.resId)
-        assertEquals("SOH3IL", notification.publicVersion.extras.getCharSequence("android.title").toString())
+        assertNull(notification.publicVersion.extras.getCharSequence("android.title"))
         assertEquals("محتوای تقویم پنهان است", notification.publicVersion.extras.getCharSequence("android.text").toString())
     }
 

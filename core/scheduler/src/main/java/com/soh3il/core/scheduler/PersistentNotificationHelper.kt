@@ -235,7 +235,7 @@ object PersistentNotificationHelper {
             .setContentText(shortSummary)
             .setStyle(
                 NotificationCompat.InboxStyle()
-                    .setSummaryText("${rlm}تقویم خورشیدی SOH3IL")
+                    .setSummaryText(null)
                     .setBigContentTitle(fullTitle)
                     .also { style -> notificationLines.forEach(style::addLine) }
             )
@@ -265,7 +265,7 @@ object PersistentNotificationHelper {
 
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(if (showOnLockscreen) smallIconRes else com.soh3il.core.designsystem.R.drawable.ic_stat_calendar)
-            .setContentTitle(if (showOnLockscreen) fullTitle else "SOH3IL")
+            .setContentTitle(if (showOnLockscreen) fullTitle else null)
             .setContentText(if (showOnLockscreen) shortSummary else "محتوای تقویم پنهان است")
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
