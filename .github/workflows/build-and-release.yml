@@ -79,7 +79,8 @@ jobs:
             elif [[ "$filename" == *"universal"* ]]; then
               cp "$apk" "release-apks/SOH3IL-v${VERSION}-universal.apk"
             else
-              cp "$apk" "release-apks/SOH3IL-v${VERSION}-universal.apk"
+              echo "Unrecognized APK artifact: $filename" >&2
+              exit 1
             fi
           done
 
