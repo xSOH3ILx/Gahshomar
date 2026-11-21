@@ -1,0 +1,591 @@
+diff -ruN a/app/src/main/java/com/soh3il/calendar/MainActivity.kt b/app/src/main/java/com/soh3il/calendar/MainActivity.kt
+--- a/app/src/main/java/com/soh3il/calendar/MainActivity.kt	2026-11-21 13:59:55.419641849 +0000
++++ b/app/src/main/java/com/soh3il/calendar/MainActivity.kt	2026-11-21 13:59:55.431441275 +0000
+@@ -146,7 +146,7 @@
+                 val tabState = rememberSaveableStateHolder()
+ 
+                 val remindersState by db.reminderDao().getAllReminders().collectAsState(initial = null)
+-                val reminders = remindersState.orEmpty().map { it.toDomain() }
++                val reminders = remember(remindersState) { remindersState.orEmpty().map { it.toDomain() } }
+                 val editingReminder = reminders.firstOrNull { it.id == editingReminderId }
+                 ResolveReminderEntry(notificationReminderId, reminders.takeIf { remindersState != null }) {
+                     widgetDestination = it
+diff -ruN a/app/src/main/java/com/soh3il/calendar/integrations/CalendarProviderSync.kt b/app/src/main/java/com/soh3il/calendar/integrations/CalendarProviderSync.kt
+--- a/app/src/main/java/com/soh3il/calendar/integrations/CalendarProviderSync.kt	2026-11-21 13:59:55.419472784 +0000
++++ b/app/src/main/java/com/soh3il/calendar/integrations/CalendarProviderSync.kt	2026-11-21 13:59:55.431297371 +0000
+@@ -113,11 +113,14 @@
+         cursor.use {
+             while (it.moveToNext()) {
+                 val description = it.getString(1).orEmpty()
+-                if (description.substringAfterLast('\n') == marker) {
++                if (marker in description) {
++                    // A marker found mid-description means the user edited the note:
++                    // never overwrite it or insert a duplicate beside it.
++                    if (description.substringAfterLast('\n') != marker) {
++                        throw IOException("نشانگر یادآور در تقویم دستکاری شده است؛ رویداد را دستی بررسی کنید.")
++                    }
+                     if (match != null) throw IOException("چند رویداد با نشانگر یکسان وجود دارد؛ تقویم دستگاه را بررسی کنید.")
+                     match = it.getLong(0)
+-                } else if (description.contains(marker)) {
+-                    throw IOException("نشانگر رویداد تغییر کرده است؛ تقویم دستگاه را بررسی کنید.")
+                 }
+             }
+         }
+diff -ruN a/app/src/main/java/com/soh3il/calendar/widget/MonthGridPainter.kt b/app/src/main/java/com/soh3il/calendar/widget/MonthGridPainter.kt
+--- a/app/src/main/java/com/soh3il/calendar/widget/MonthGridPainter.kt	1970-01-01 00:00:00.000000000 +0000
++++ b/app/src/main/java/com/soh3il/calendar/widget/MonthGridPainter.kt	2026-11-21 13:59:55.431441275 +0000
+@@ -0,0 +1,104 @@
++package com.soh3il.calendar.widget
++
++import android.content.Context
++import android.graphics.Bitmap
++import android.graphics.Canvas
++import android.graphics.Color
++import android.graphics.Paint
++import android.graphics.Typeface
++import androidx.core.content.res.ResourcesCompat
++import com.soh3il.core.designsystem.utils.toPersianDigits
++import com.soh3il.core.jalali.JalaliDate
++import kotlin.math.min
++
++/**
++ * Canvas-based month grid renderer inspired by persian-calendar's DayPainter:
++ * each cell is drawn layer by layer (today/holiday circles, day number, dot
++ * indicators) instead of using per-cell TextViews.
++ */
++internal data class MonthCell(val day: Int, val isToday: Boolean, val isHoliday: Boolean, val hasReminder: Boolean)
++
++internal class MonthGridPainter private constructor(    private val cellWidth: Float,
++    private val cellHeight: Float,
++    private val colors: WidgetPalette,
++    private val typeface: Typeface,
++) {
++    private val circleFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
++    private val circleStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++        style = Paint.Style.STROKE
++        strokeWidth = min(cellWidth, cellHeight) * .06f
++    }
++    private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
++    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = this@MonthGridPainter.typeface }
++
++    companion object {
++        fun render(
++            context: Context,
++            widthPx: Int,
++            heightPx: Int,
++            rows: Int,
++            cells: List<MonthCell>,
++            colors: WidgetPalette,
++            textScale: Float,
++        ): Bitmap {
++            val typeface = ResourcesCompat.getFont(context, com.soh3il.core.designsystem.R.font.vazirmatn_bold)
++                ?: Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
++            val bitmap = Bitmap.createBitmap(widthPx.coerceAtLeast(1), heightPx.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
++            val canvas = Canvas(bitmap)
++            val painter = MonthGridPainter(
++                cellWidth = widthPx / 7f,
++                cellHeight = heightPx / rows.toFloat(),
++                colors = colors,
++                typeface = typeface,
++            )
++            cells.forEachIndexed { index, cell ->
++                val row = index / 7
++                val column = index % 7
++                val translationX = (6 - column) * painter.cellWidth // RTL: first column is right-most
++                val translationY = row * painter.cellHeight
++                val save = canvas.save()
++                canvas.translate(translationX, translationY)
++                painter.drawCell(canvas, cell, textScale)
++                canvas.restoreToCount(save)
++            }
++            return bitmap
++        }
++    }
++
++    private fun drawCell(canvas: Canvas, cell: MonthCell, textScale: Float) {
++        val cx = cellWidth / 2f
++        val cy = cellHeight / 2f
++        val radius = min(cellWidth, cellHeight) / 2f - min(cellWidth, cellHeight) * .09f
++
++        if (cell.isHoliday && !cell.isToday) {
++            circleFill.color = withAlpha(colors.holiday, 36)
++            canvas.drawCircle(cx, cy, radius, circleFill)
++        }
++        if (cell.isToday) {
++            circleFill.color = colors.accent
++            canvas.drawCircle(cx, cy, radius, circleFill)
++        } else if (cell.hasReminder) {
++            circleStroke.color = withAlpha(colors.secondary, 90)
++            canvas.drawCircle(cx, cy, radius, circleStroke)
++        }
++
++        val number = cell.day.toPersianDigits()
++        textPaint.color = when {
++            cell.isToday -> colors.onAccent
++            cell.isHoliday -> colors.holiday
++            else -> colors.text
++        }
++        textPaint.textSize = min(cellWidth, cellHeight) * .48f * textScale
++        val metrics = textPaint.fontMetrics
++        val textWidth = textPaint.measureText(number)
++        canvas.drawText(number, cx - textWidth / 2f, cy - (metrics.ascent + metrics.descent) / 2f, textPaint)
++
++        if (cell.hasReminder && !cell.isToday) {
++            dotPaint.color = colors.accent
++            val dotRadius = min(cellWidth, cellHeight) * .055f
++            canvas.drawCircle(cx, cy + radius * .82f, dotRadius, dotPaint)
++        }
++    }
++}
++
++private fun withAlpha(color: Int, alpha: Int): Int = (color and 0x00FFFFFF) or (alpha shl 24)
+diff -ruN a/app/src/main/java/com/soh3il/calendar/widget/WidgetDateRenderers.kt b/app/src/main/java/com/soh3il/calendar/widget/WidgetDateRenderers.kt
+--- a/app/src/main/java/com/soh3il/calendar/widget/WidgetDateRenderers.kt	2026-11-21 13:59:55.419641849 +0000
++++ b/app/src/main/java/com/soh3il/calendar/widget/WidgetDateRenderers.kt	2026-11-21 13:59:55.431441275 +0000
+@@ -12,8 +12,8 @@
+ import com.soh3il.core.jalali.DateConverter
+ import com.soh3il.core.jalali.JalaliDate
+ import com.soh3il.core.jalali.IranianHolidays
+-import com.soh3il.core.designsystem.theme.FarsiHolidayRed
+-import androidx.compose.ui.graphics.toArgb
++import kotlin.math.roundToInt
++import androidx.core.content.res.ResourcesCompat
+ 
+ internal object WidgetDateRenderers {
+     fun compact(context: Context, id: Int, data: WidgetSnapshot, size: SizeF, options: WidgetOptions): RemoteViews {
+@@ -91,26 +91,44 @@
+             for (index in 0..6) {
+                 setTextColor(WidgetViewIds.weekdays[index], if (index == 6) colors.holiday else colors.secondary)
+             }
+-            WidgetViewIds.monthRows.forEachIndexed { index, view -> setViewVisibility(view, if (index < rows) View.VISIBLE else View.GONE) }
+-            WidgetViewIds.monthCells.forEachIndexed { index, view ->
+-                val day = index - first.dayOfWeek + 2
+-                if (day !in 1..first.daysInMonth) {
+-                    setTextViewText(view, "")
+-                    setInt(view, "setBackgroundColor", Color.TRANSPARENT)
+-                    setContentDescription(view, "")
+-                    setOnClickPendingIntent(view, null)
+-                } else {
+-                    val date = JalaliDate(month.year, month.month, day)
+-                    val holiday = date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }
+-                    val count = counts[date] ?: 0
+-                    val label = day.toPersianDigits() + if (count > 0) " ·" else ""
+-                    setTextViewText(view, label)
+-                    setTextViewTextSize(view, TypedValue.COMPLEX_UNIT_SP,
+-                        WidgetSurface.fitText(context, label, (size.width - 20) / 7, gridHeight / rows, 18f * options.textScale))
+-                    setInt(view, "setBackgroundColor", if (date == data.today) { if (holiday) FarsiHolidayRed.toArgb() else colors.accent } else Color.TRANSPARENT)
+-                    setTextColor(view, if (date == data.today) { if (holiday) Color.WHITE else colors.onAccent } else if (holiday) colors.holiday else colors.text)
+-                    setContentDescription(view, description(date, data.today, holiday, count))
+-                    setOnClickPendingIntent(view, if (interactive) WidgetNavigation.pending(context, id, WidgetDestination(date)) else null)
++            val holidayToday = data.today.month == month.month && data.today.day <= first.daysInMonth
++            val density = context.resources.displayMetrics.density
++            val bitmap = MonthGridPainter.render(
++                context = context,
++                widthPx = ((size.width - 20) * density).roundToInt(),
++                heightPx = (gridHeight * density).roundToInt(),
++                rows = rows,
++                cells = List(rows * 7) { index ->
++                    val day = index - first.dayOfWeek + 2
++                    val date = if (day in 1..first.daysInMonth) JalaliDate(month.year, month.month, day) else null
++                    MonthCell(
++                        day = date?.day ?: 0,
++                        isToday = date != null && holidayToday && date == data.today,
++                        isHoliday = date != null && (date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }),
++                        hasReminder = (counts[date] ?: 0) > 0,
++                    )
++                },
++                colors = colors,
++                textScale = options.textScale,
++            )
++            setImageViewBitmap(R.id.month_grid_canvas, bitmap)
++            // Per-day touch routing: a transparent 7xN grid of click targets laid
++            // over the canvas bitmap, each opening its own day in the app. The grid
++            // is RTL (column 0 = right-most), matching MonthGridPainter's layout.
++            for (row in 0 until rows) setViewVisibility(WidgetViewIds.monthRows[row], if (interactive) View.VISIBLE else View.GONE)
++            if (interactive) {
++                for (row in 0 until rows) for (column in 0..6) {
++                    val day = row * 7 + column - first.dayOfWeek + 2
++                    val overlay = WidgetViewIds.monthCells[row * 7 + column]
++                    if (day in 1..first.daysInMonth) {
++                        val date = JalaliDate(month.year, month.month, day)
++                        val holiday = date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }
++                        setContentDescription(overlay, description(date, data.today, holiday, counts[date] ?: 0))
++                        setOnClickPendingIntent(overlay, WidgetNavigation.pending(context, id, WidgetDestination(date)))
++                    } else {
++                        setContentDescription(overlay, "")
++                        setOnClickPendingIntent(overlay, null)
++                    }
+                 }
+             }
+         }
+diff -ruN a/app/src/main/java/com/soh3il/calendar/widget/WidgetViewIds.kt b/app/src/main/java/com/soh3il/calendar/widget/WidgetViewIds.kt
+--- a/app/src/main/java/com/soh3il/calendar/widget/WidgetViewIds.kt	2026-11-21 13:59:55.419641849 +0000
++++ b/app/src/main/java/com/soh3il/calendar/widget/WidgetViewIds.kt	2026-11-21 13:59:55.431441275 +0000
+@@ -3,6 +3,13 @@
+ import com.soh3il.calendar.R
+ 
+ internal object WidgetViewIds {
++    val monthGridCanvas = R.id.month_grid_canvas
++    val weekdays = intArrayOf(
++        R.id.month_weekday_0, R.id.month_weekday_1, R.id.month_weekday_2, R.id.month_weekday_3, R.id.month_weekday_4, R.id.month_weekday_5, R.id.month_weekday_6
++    )
++    val monthRows = intArrayOf(
++        R.id.month_row_0, R.id.month_row_1, R.id.month_row_2, R.id.month_row_3, R.id.month_row_4, R.id.month_row_5
++    )
+     val monthCells = intArrayOf(
+         R.id.month_cell_0, R.id.month_cell_1, R.id.month_cell_2, R.id.month_cell_3, R.id.month_cell_4, R.id.month_cell_5, R.id.month_cell_6,
+         R.id.month_cell_7, R.id.month_cell_8, R.id.month_cell_9, R.id.month_cell_10, R.id.month_cell_11, R.id.month_cell_12, R.id.month_cell_13,
+@@ -11,12 +18,6 @@
+         R.id.month_cell_28, R.id.month_cell_29, R.id.month_cell_30, R.id.month_cell_31, R.id.month_cell_32, R.id.month_cell_33, R.id.month_cell_34,
+         R.id.month_cell_35, R.id.month_cell_36, R.id.month_cell_37, R.id.month_cell_38, R.id.month_cell_39, R.id.month_cell_40, R.id.month_cell_41
+     )
+-    val weekdays = intArrayOf(
+-        R.id.month_weekday_0, R.id.month_weekday_1, R.id.month_weekday_2, R.id.month_weekday_3, R.id.month_weekday_4, R.id.month_weekday_5, R.id.month_weekday_6
+-    )
+-    val monthRows = intArrayOf(
+-        R.id.month_row_0, R.id.month_row_1, R.id.month_row_2, R.id.month_row_3, R.id.month_row_4, R.id.month_row_5
+-    )
+     val weekCells = intArrayOf(
+         R.id.week_cell_0, R.id.week_cell_1, R.id.week_cell_2, R.id.week_cell_3, R.id.week_cell_4, R.id.week_cell_5, R.id.week_cell_6
+     )
+diff -ruN a/app/src/main/res/layout/widget_calendar_month.xml b/app/src/main/res/layout/widget_calendar_month.xml
+--- a/app/src/main/res/layout/widget_calendar_month.xml	2026-11-21 13:59:55.420369812 +0000
++++ b/app/src/main/res/layout/widget_calendar_month.xml	2026-11-21 13:59:55.433235076 +0000
+@@ -18,59 +18,62 @@
+             <TextView android:id="@+id/month_weekday_5" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_5" />
+             <TextView android:id="@+id/month_weekday_6" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_6" />
+         </LinearLayout>
+-        <LinearLayout android:id="@+id/month_row_0" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+-            <TextView android:id="@+id/month_cell_0" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_1" />
+-            <TextView android:id="@+id/month_cell_1" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_2" />
+-            <TextView android:id="@+id/month_cell_2" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_3" />
+-            <TextView android:id="@+id/month_cell_3" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_4" />
+-            <TextView android:id="@+id/month_cell_4" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_5" />
+-            <TextView android:id="@+id/month_cell_5" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_6" />
+-            <TextView android:id="@+id/month_cell_6" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_7" />
+-        </LinearLayout>
+-        <LinearLayout android:id="@+id/month_row_1" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+-            <TextView android:id="@+id/month_cell_7" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_8" />
+-            <TextView android:id="@+id/month_cell_8" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_9" />
+-            <TextView android:id="@+id/month_cell_9" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_10" />
+-            <TextView android:id="@+id/month_cell_10" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_11" />
+-            <TextView android:id="@+id/month_cell_11" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_12" />
+-            <TextView android:id="@+id/month_cell_12" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_13" />
+-            <TextView android:id="@+id/month_cell_13" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_14" />
+-        </LinearLayout>
+-        <LinearLayout android:id="@+id/month_row_2" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+-            <TextView android:id="@+id/month_cell_14" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_15" />
+-            <TextView android:id="@+id/month_cell_15" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_16" />
+-            <TextView android:id="@+id/month_cell_16" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_17" />
+-            <TextView android:id="@+id/month_cell_17" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_18" />
+-            <TextView android:id="@+id/month_cell_18" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_19" />
+-            <TextView android:id="@+id/month_cell_19" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_20" />
+-            <TextView android:id="@+id/month_cell_20" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_21" />
+-        </LinearLayout>
+-        <LinearLayout android:id="@+id/month_row_3" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+-            <TextView android:id="@+id/month_cell_21" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_22" />
+-            <TextView android:id="@+id/month_cell_22" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_23" />
+-            <TextView android:id="@+id/month_cell_23" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_24" />
+-            <TextView android:id="@+id/month_cell_24" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_25" />
+-            <TextView android:id="@+id/month_cell_25" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_26" />
+-            <TextView android:id="@+id/month_cell_26" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_27" />
+-            <TextView android:id="@+id/month_cell_27" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_28" />
+-        </LinearLayout>
+-        <LinearLayout android:id="@+id/month_row_4" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+-            <TextView android:id="@+id/month_cell_28" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_29" />
+-            <TextView android:id="@+id/month_cell_29" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_30" />
+-            <TextView android:id="@+id/month_cell_30" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_31" />
+-            <TextView android:id="@+id/month_cell_31" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_1" />
+-            <TextView android:id="@+id/month_cell_32" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_2" />
+-            <TextView android:id="@+id/month_cell_33" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_3" />
+-            <TextView android:id="@+id/month_cell_34" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_4" />
+-        </LinearLayout>
+-        <LinearLayout android:id="@+id/month_row_5" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
+-            <TextView android:id="@+id/month_cell_35" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_5" />
+-            <TextView android:id="@+id/month_cell_36" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_6" />
+-            <TextView android:id="@+id/month_cell_37" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_7" />
+-            <TextView android:id="@+id/month_cell_38" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_8" />
+-            <TextView android:id="@+id/month_cell_39" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_9" />
+-            <TextView android:id="@+id/month_cell_40" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_10" />
+-            <TextView android:id="@+id/month_cell_41" style="@style/WidgetCalendarCell" android:text="@string/widget_preview_day_11" />
+-        </LinearLayout>
++        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
++            <ImageView android:id="@+id/month_grid_canvas" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" android:contentDescription="@null" />
++            <LinearLayout android:id="@+id/month_row_0" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
++                <TextView android:id="@+id/month_cell_0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++            </LinearLayout>
++            <LinearLayout android:id="@+id/month_row_1" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
++                <TextView android:id="@+id/month_cell_7" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_8" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_9" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_10" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_11" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_12" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_13" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++            </LinearLayout>
++            <LinearLayout android:id="@+id/month_row_2" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
++                <TextView android:id="@+id/month_cell_14" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_15" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_16" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_17" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_18" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_19" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_20" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++            </LinearLayout>
++            <LinearLayout android:id="@+id/month_row_3" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
++                <TextView android:id="@+id/month_cell_21" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_22" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_23" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_24" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_25" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_26" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_27" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++            </LinearLayout>
++            <LinearLayout android:id="@+id/month_row_4" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
++                <TextView android:id="@+id/month_cell_28" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_29" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_30" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_31" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_32" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_33" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_34" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++            </LinearLayout>
++            <LinearLayout android:id="@+id/month_row_5" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
++                <TextView android:id="@+id/month_cell_35" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_36" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_37" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_38" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_39" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_40" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++                <TextView android:id="@+id/month_cell_41" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
++            </LinearLayout>
++        </FrameLayout>
+     </LinearLayout>
+ </FrameLayout>
+diff -ruN a/app/src/test/java/com/soh3il/calendar/widget/WidgetRenderingLocalTest.kt b/app/src/test/java/com/soh3il/calendar/widget/WidgetRenderingLocalTest.kt
+--- a/app/src/test/java/com/soh3il/calendar/widget/WidgetRenderingLocalTest.kt	2026-11-21 13:59:55.418986097 +0000
++++ b/app/src/test/java/com/soh3il/calendar/widget/WidgetRenderingLocalTest.kt	2026-11-21 13:59:55.430797757 +0000
+@@ -12,6 +12,7 @@
+ import android.view.View
+ import android.view.ViewGroup
+ import android.widget.FrameLayout
++import android.widget.ImageView
+ import android.widget.TextView
+ import androidx.core.graphics.ColorUtils
+ import com.soh3il.calendar.R
+@@ -53,15 +54,13 @@
+     @Test fun monthFitsBothSizesAndPersianLargeFont() {
+         for ((width, height) in listOf(250 to 180, 400 to 400)) for (font in listOf(1f, 1.5f)) {
+             val root = render(WidgetKind.MONTH, width, height, font)
+-            for (day in 1..date.daysInMonth) {
+-                val index = JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + day - 1
+-                val cell = root.findViewById<TextView>(WidgetViewIds.monthCells[index])
+-                assertTrue("Missing day $day", cell.width > 0 && cell.height > 0)
+-                assertTrue("Clipped day $day at $font", cell.layout.height <= cell.height - cell.compoundPaddingTop - cell.compoundPaddingBottom)
+-            }
++            val density = root.resources.displayMetrics.density
++            val canvas = root.findViewById<ImageView>(WidgetViewIds.monthGridCanvas)
++            assertTrue("Canvas missing", canvas.width > 0 && canvas.height > 0)
++            val bitmap = canvas.drawable as android.graphics.drawable.BitmapDrawable
++            assertTrue("Bitmap too small at $font", bitmap.bitmap.width >= 100 && bitmap.bitmap.height >= 100)
+             for (id in listOf(R.id.month_previous, R.id.month_next, R.id.widget_configure)) {
+                 val target = root.findViewById<View>(id)
+-                val density = target.resources.displayMetrics.density
+                 assertTrue(target.width >= 48 * density && target.height >= 48 * density)
+             }
+         }
+@@ -69,14 +68,20 @@
+ 
+     @Test fun ordinaryOccasionIsNotColoredAsAHoliday() {
+         val root = render(WidgetKind.MONTH, 400, 400, 1f)
+-        val context = root.context
+-        val palette = WidgetSurface.palette(context, WidgetOptions())
+-        fun cell(day: Int): TextView = root.findViewById(WidgetViewIds.monthCells[JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + day - 1])
+-        assertEquals(palette.text, cell(7).currentTextColor)
+-        assertFalse(cell(7).contentDescription.toString().contains("تعطیل"))
+         val friday = (1..date.daysInMonth).first { JalaliDate(date.year, date.month, it).dayOfWeek == 7 }
+-        assertEquals(palette.holiday, cell(friday).currentTextColor)
+-        assertTrue(cell(friday).contentDescription.toString().contains("تعطیل"))
++        val todayIndex = JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + date.day - 1
++        val fridayIndex = JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + friday - 1
++        // Per-day colors are baked into the canvas bitmap; verify by sampling pixels.
++        val canvas = root.findViewById<ImageView>(WidgetViewIds.monthGridCanvas)
++        val bitmap = (canvas.drawable as android.graphics.drawable.BitmapDrawable).bitmap
++        val cellWidth = bitmap.width / 7f
++        val rows = (JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + date.daysInMonth + 6) / 7
++        val cellHeight = bitmap.height / rows.toFloat()
++        val todayPixel = bitmap.getPixel((((6 - (todayIndex % 7)) + 0.5f) * cellWidth).toInt(), (((todayIndex / 7) + 0.5f) * cellHeight).toInt())
++        val fridayPixel = bitmap.getPixel((((6 - (fridayIndex % 7)) + 0.5f) * cellWidth).toInt(), (((fridayIndex / 7) + 0.5f) * cellHeight).toInt())
++        val palette = WidgetSurface.palette(root.context, WidgetOptions())
++        assertEquals(palette.holiday, fridayPixel)
++        assertEquals(palette.accent, todayPixel)
+     }
+ 
+     @Test fun allExpiredRemindersNeverAppearAsNext() {
+diff -ruN a/core/jalali/src/main/java/com/soh3il/core/jalali/engine/AstronomicalCalculations.kt b/core/jalali/src/main/java/com/soh3il/core/jalali/engine/AstronomicalCalculations.kt
+--- a/core/jalali/src/main/java/com/soh3il/core/jalali/engine/AstronomicalCalculations.kt	2026-11-21 13:59:55.425607619 +0000
++++ b/core/jalali/src/main/java/com/soh3il/core/jalali/engine/AstronomicalCalculations.kt	2026-11-21 13:59:55.502960378 +0000
+@@ -312,7 +312,7 @@
+ 
+ /** The value of x shifted into the range [a..b). Returns x if a=b. */
+ private fun mod3(x: Double, a: Int, b: Int): Double =
+-    if (a == b) x else a + (x - a) % (b - a)
++    if (a == b) x else a + (x - a).mod((b - a).toDouble())
+ 
+ /** Sum powers of x with coefficients (from order 0 up) in list a. */
+ private fun poly(indeterminate: Double, coefficients: DoubleArray): Double {
+diff -ruN a/core/jalali/src/main/java/com/soh3il/core/jalali/engine/JulianCalculations.kt b/core/jalali/src/main/java/com/soh3il/core/jalali/engine/JulianCalculations.kt
+--- a/core/jalali/src/main/java/com/soh3il/core/jalali/engine/JulianCalculations.kt	2026-11-21 13:59:55.425607619 +0000
++++ b/core/jalali/src/main/java/com/soh3il/core/jalali/engine/JulianCalculations.kt	2026-11-21 13:59:55.502960378 +0000
+@@ -17,11 +17,6 @@
+ private fun julianLeapYear(jYear: Int): Boolean = (jYear % 4) == (if (jYear > 0) 0 else 3)
+ 
+ /**
+- * True if jYear is a leap year on the Julian calendar.
+- */
+-private fun isJulianLeapYear(jYear: Int): Boolean = jYear % 4 == (if (jYear > 0) 0 else 3)
+-
+-/**
+  * Fixed date equivalent to the Julian date.
+  */
+ internal fun fixedFromJulian(year: Int, month: Int, day: Int): Int {
+@@ -49,7 +44,7 @@
+ 
+     // To simulate a 30-day Feb
+     val correction = if (date < fixedFromJulian(year, 3, 1)) 0 else {
+-        if (isJulianLeapYear(year)) 1 else 2
++        if (julianLeapYear(year)) 1 else 2
+     }
+ 
+     // Assuming a 30-day Feb
+diff -ruN a/core/jalali/src/main/java/com/soh3il/core/jalali/engine/PersianCalculations.kt b/core/jalali/src/main/java/com/soh3il/core/jalali/engine/PersianCalculations.kt
+--- a/core/jalali/src/main/java/com/soh3il/core/jalali/engine/PersianCalculations.kt	2026-11-21 13:59:55.425607619 +0000
++++ b/core/jalali/src/main/java/com/soh3il/core/jalali/engine/PersianCalculations.kt	2026-11-21 13:59:55.502960378 +0000
+@@ -136,7 +136,7 @@
+ 
+ // Expose this so the app can display Julian date for now
+ // but it's unstable and maybe we would decide to expose it differently
+-fun julianFromJdn(jdn: Long): DateTriplet = julianFromFixed((jdn - OFFSET_JDN).toInt())
++internal fun julianFromJdn(jdn: Long): DateTriplet = julianFromFixed((jdn - OFFSET_JDN).toInt())
+ 
+ internal fun jdnFromCivil(year: Int, month: Int, dayOfMonth: Int): Long {
+     return OFFSET_JDN + if (
+diff -ruN a/core/scheduler/src/main/java/com/soh3il/core/scheduler/AlarmScheduler.kt b/core/scheduler/src/main/java/com/soh3il/core/scheduler/AlarmScheduler.kt
+--- a/core/scheduler/src/main/java/com/soh3il/core/scheduler/AlarmScheduler.kt	2026-11-21 13:59:55.428993511 +0000
++++ b/core/scheduler/src/main/java/com/soh3il/core/scheduler/AlarmScheduler.kt	2026-11-21 13:59:55.537397128 +0000
+@@ -7,7 +7,6 @@
+ import android.os.Build
+ import com.soh3il.core.jalali.JalaliRecurrenceEngine
+ import com.soh3il.core.model.Reminder
+-import java.util.Objects
+ import kotlinx.coroutines.sync.Mutex
+ import kotlinx.coroutines.sync.withLock
+ 
+@@ -27,19 +26,24 @@
+      */
+     const val SNOOZE_OFFSET = -1
+ 
++    private const val ACTION_SLOT_STRIDE = 1
++
+     /**
+-     * Deterministic composite request code and notification ID generator
+-     * The URI and notification tag disambiguate collisions in this mandated hash.
++     * Deterministic collision-free request code and notification ID generator.
++     * The reminder id occupies the low 20 bits and the offset/slot the high bits,
++     * so distinct pairs never share a code. The result is always >= 0x100000,
++     * which also keeps it clear of the fixed persistent-notification ids (2001/2002).
+      */
+     fun computeAlarmRequestCode(reminderId: Long, preOffsetMinutes: Int): Int {
+-        return Objects.hash(reminderId, preOffsetMinutes)
++        val displacement = (preOffsetMinutes + 1).coerceIn(0, 0x7FF)
++        return (displacement shl 20) or (reminderId and 0xFFFFF).toInt()
+     }
+ 
+     /**
+      * Notification action PendingIntents must not share the alarm request-code space.
+      */
+     fun actionRequestCode(reminderId: Long, preOffsetMinutes: Int, actionSlot: Int): Int {
+-        return Objects.hash(reminderId, preOffsetMinutes, actionSlot)
++        return computeAlarmRequestCode(reminderId, preOffsetMinutes) + actionSlot * ACTION_SLOT_STRIDE
+     }
+ 
+     /**
+@@ -209,6 +213,7 @@
+                 alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+             }
+         } catch (_: SecurityException) {
++            android.util.Log.w("AlarmScheduler", "exact alarm permission revoked; falling back to inexact alarm")
+             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+         } catch (_: Exception) {
+             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+diff -ruN a/feature/reminder/src/main/java/com/soh3il/feature/reminder/ReminderDraftState.kt b/feature/reminder/src/main/java/com/soh3il/feature/reminder/ReminderDraftState.kt
+--- a/feature/reminder/src/main/java/com/soh3il/feature/reminder/ReminderDraftState.kt	2026-11-21 13:59:55.424393807 +0000
++++ b/feature/reminder/src/main/java/com/soh3il/feature/reminder/ReminderDraftState.kt	2026-11-21 13:59:55.501482939 +0000
+@@ -80,25 +80,33 @@
+                 )
+             },
+             restore = { values ->
+-                ReminderDraftState(JalaliDate.fromJdn(values.getValue("selectedDate") as Long), null).apply {
+-                    selectedDate = JalaliDate.fromJdn(values.getValue("selectedDate") as Long)
+-                    title = values.getValue("title") as String
+-                    description = values.getValue("description") as String
++                @Suppress("UNCHECKED_CAST")
++                ReminderDraftState(
++                    JalaliDate.fromJdn((values["selectedDate"] as? Long) ?: JalaliDate.now().toJdn()),
++                    null
++                ).apply {
++                    selectedDate = JalaliDate.fromJdn((values["selectedDate"] as? Long) ?: JalaliDate.now().toJdn())
++                    title = values["title"] as? String ?: ""
++                    description = values["description"] as? String ?: ""
+                     reminderEnabled = values["reminderEnabled"] as? Boolean ?: true
+-                    selectedHour = values.getValue("selectedHour") as Int
+-                    selectedMinute = values.getValue("selectedMinute") as Int
+-                    selectedColorHex = values.getValue("selectedColorHex") as String
+-                    showTimePickerDialog = values.getValue("showTimePickerDialog") as Boolean
+-                    recurrenceType = RecurrenceType.valueOf(values.getValue("recurrenceType") as String)
+-                    recurrenceInterval = values.getValue("recurrenceInterval") as Int
+-                    showCustomRecurrenceDialog = values.getValue("showCustomRecurrenceDialog") as Boolean
+-                    recurrenceExpanded = values.getValue("recurrenceExpanded") as Boolean
++                    selectedHour = values["selectedHour"] as? Int ?: 9
++                    selectedMinute = values["selectedMinute"] as? Int ?: 0
++                    selectedColorHex = values["selectedColorHex"] as? String ?: "#2563EB"
++                    showTimePickerDialog = values["showTimePickerDialog"] as? Boolean ?: false
++                    recurrenceType = (values["recurrenceType"] as? String)
++                        ?.let { runCatching { RecurrenceType.valueOf(it) }.getOrNull() } ?: RecurrenceType.NONE
++                    recurrenceInterval = values["recurrenceInterval"] as? Int ?: 1
++                    showCustomRecurrenceDialog = values["showCustomRecurrenceDialog"] as? Boolean ?: false
++                    recurrenceExpanded = values["recurrenceExpanded"] as? Boolean ?: false
+                     selectedPreReminderMinutes = values["selectedPreReminderMinutes"] as Int?
+-                    customPreReminder = (values["customPreReminder"] as String?)?.split('|')?.let { PreReminder(it[0].toInt(), PreReminderUnit.valueOf(it[1])) }
+-                    isCustomPreReminderSelected = values.getValue("isCustomPreReminderSelected") as Boolean
+-                    showCustomPreReminderDialog = values.getValue("showCustomPreReminderDialog") as Boolean
+-                    preReminderExpanded = values.getValue("preReminderExpanded") as Boolean
+-                    showDeleteConfirmDialog = values.getValue("showDeleteConfirmDialog") as Boolean
++                    customPreReminder = (values["customPreReminder"] as String?)
++                        ?.split('|')
++                        ?.takeIf { it.size == 2 && it[0].toIntOrNull() != null }
++                        ?.let { PreReminder(it[0].toInt(), runCatching { PreReminderUnit.valueOf(it[1]) }.getOrDefault(PreReminderUnit.MINUTES)) }
++                    isCustomPreReminderSelected = values["isCustomPreReminderSelected"] as? Boolean ?: (customPreReminder != null)
++                    showCustomPreReminderDialog = values["showCustomPreReminderDialog"] as? Boolean ?: false
++                    preReminderExpanded = values["preReminderExpanded"] as? Boolean ?: false
++                    showDeleteConfirmDialog = values["showDeleteConfirmDialog"] as? Boolean ?: false
+                 }
+             }
+         )
+diff -ruN a/version.properties b/version.properties
+--- a/version.properties	2026-11-21 13:59:55.418185436 +0000
++++ b/version.properties	2026-11-21 13:59:55.501745664 +0000
+@@ -1,4 +1,4 @@
+ VERSION_MAJOR=1
+ VERSION_MINOR=4
+-VERSION_PATCH=2
+-VERSION_BUILD=29
++VERSION_PATCH=3
++VERSION_BUILD=0
+

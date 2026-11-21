@@ -12,8 +12,8 @@ import com.soh3il.core.jalali.CalendarOccurrences
 import com.soh3il.core.jalali.DateConverter
 import com.soh3il.core.jalali.JalaliDate
 import com.soh3il.core.jalali.IranianHolidays
-import com.soh3il.core.designsystem.theme.FarsiHolidayRed
-import androidx.compose.ui.graphics.toArgb
+import kotlin.math.roundToInt
+import androidx.core.content.res.ResourcesCompat
 
 internal object WidgetDateRenderers {
     fun compact(context: Context, id: Int, data: WidgetSnapshot, size: SizeF, options: WidgetOptions): RemoteViews {
@@ -91,26 +91,44 @@ internal object WidgetDateRenderers {
             for (index in 0..6) {
                 setTextColor(WidgetViewIds.weekdays[index], if (index == 6) colors.holiday else colors.secondary)
             }
-            WidgetViewIds.monthRows.forEachIndexed { index, view -> setViewVisibility(view, if (index < rows) View.VISIBLE else View.GONE) }
-            WidgetViewIds.monthCells.forEachIndexed { index, view ->
-                val day = index - first.dayOfWeek + 2
-                if (day !in 1..first.daysInMonth) {
-                    setTextViewText(view, "")
-                    setInt(view, "setBackgroundColor", Color.TRANSPARENT)
-                    setContentDescription(view, "")
-                    setOnClickPendingIntent(view, null)
-                } else {
-                    val date = JalaliDate(month.year, month.month, day)
-                    val holiday = date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }
-                    val count = counts[date] ?: 0
-                    val label = day.toPersianDigits() + if (count > 0) " ·" else ""
-                    setTextViewText(view, label)
-                    setTextViewTextSize(view, TypedValue.COMPLEX_UNIT_SP,
-                        WidgetSurface.fitText(context, label, (size.width - 20) / 7, gridHeight / rows, 18f * options.textScale))
-                    setInt(view, "setBackgroundColor", if (date == data.today) { if (holiday) FarsiHolidayRed.toArgb() else colors.accent } else Color.TRANSPARENT)
-                    setTextColor(view, if (date == data.today) { if (holiday) Color.WHITE else colors.onAccent } else if (holiday) colors.holiday else colors.text)
-                    setContentDescription(view, description(date, data.today, holiday, count))
-                    setOnClickPendingIntent(view, if (interactive) WidgetNavigation.pending(context, id, WidgetDestination(date)) else null)
+            val holidayToday = data.today.month == month.month && data.today.day <= first.daysInMonth
+            val density = context.resources.displayMetrics.density
+            val bitmap = MonthGridPainter.render(
+                context = context,
+                widthPx = ((size.width - 20) * density).roundToInt(),
+                heightPx = (gridHeight * density).roundToInt(),
+                rows = rows,
+                cells = List(rows * 7) { index ->
+                    val day = index - first.dayOfWeek + 2
+                    val date = if (day in 1..first.daysInMonth) JalaliDate(month.year, month.month, day) else null
+                    MonthCell(
+                        day = date?.day ?: 0,
+                        isToday = date != null && holidayToday && date == data.today,
+                        isHoliday = date != null && (date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }),
+                        hasReminder = (counts[date] ?: 0) > 0,
+                    )
+                },
+                colors = colors,
+                textScale = options.textScale,
+            )
+            setImageViewBitmap(R.id.month_grid_canvas, bitmap)
+            // Per-day touch routing: a transparent 7xN grid of click targets laid
+            // over the canvas bitmap, each opening its own day in the app. The grid
+            // is RTL (column 0 = right-most), matching MonthGridPainter's layout.
+            for (row in 0 until rows) setViewVisibility(WidgetViewIds.monthRows[row], if (interactive) View.VISIBLE else View.GONE)
+            if (interactive) {
+                for (row in 0 until rows) for (column in 0..6) {
+                    val day = row * 7 + column - first.dayOfWeek + 2
+                    val overlay = WidgetViewIds.monthCells[row * 7 + column]
+                    if (day in 1..first.daysInMonth) {
+                        val date = JalaliDate(month.year, month.month, day)
+                        val holiday = date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }
+                        setContentDescription(overlay, description(date, data.today, holiday, counts[date] ?: 0))
+                        setOnClickPendingIntent(overlay, WidgetNavigation.pending(context, id, WidgetDestination(date)))
+                    } else {
+                        setContentDescription(overlay, "")
+                        setOnClickPendingIntent(overlay, null)
+                    }
                 }
             }
         }

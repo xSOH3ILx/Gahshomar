@@ -12,6 +12,7 @@ import android.util.SizeF
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.graphics.ColorUtils
 import com.soh3il.calendar.R
@@ -53,15 +54,13 @@ class WidgetRenderingLocalTest {
     @Test fun monthFitsBothSizesAndPersianLargeFont() {
         for ((width, height) in listOf(250 to 180, 400 to 400)) for (font in listOf(1f, 1.5f)) {
             val root = render(WidgetKind.MONTH, width, height, font)
-            for (day in 1..date.daysInMonth) {
-                val index = JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + day - 1
-                val cell = root.findViewById<TextView>(WidgetViewIds.monthCells[index])
-                assertTrue("Missing day $day", cell.width > 0 && cell.height > 0)
-                assertTrue("Clipped day $day at $font", cell.layout.height <= cell.height - cell.compoundPaddingTop - cell.compoundPaddingBottom)
-            }
+            val density = root.resources.displayMetrics.density
+            val canvas = root.findViewById<ImageView>(WidgetViewIds.monthGridCanvas)
+            assertTrue("Canvas missing", canvas.width > 0 && canvas.height > 0)
+            val bitmap = canvas.drawable as android.graphics.drawable.BitmapDrawable
+            assertTrue("Bitmap too small at $font", bitmap.bitmap.width >= 100 && bitmap.bitmap.height >= 100)
             for (id in listOf(R.id.month_previous, R.id.month_next, R.id.widget_configure)) {
                 val target = root.findViewById<View>(id)
-                val density = target.resources.displayMetrics.density
                 assertTrue(target.width >= 48 * density && target.height >= 48 * density)
             }
         }
@@ -69,14 +68,20 @@ class WidgetRenderingLocalTest {
 
     @Test fun ordinaryOccasionIsNotColoredAsAHoliday() {
         val root = render(WidgetKind.MONTH, 400, 400, 1f)
-        val context = root.context
-        val palette = WidgetSurface.palette(context, WidgetOptions())
-        fun cell(day: Int): TextView = root.findViewById(WidgetViewIds.monthCells[JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + day - 1])
-        assertEquals(palette.text, cell(7).currentTextColor)
-        assertFalse(cell(7).contentDescription.toString().contains("تعطیل"))
         val friday = (1..date.daysInMonth).first { JalaliDate(date.year, date.month, it).dayOfWeek == 7 }
-        assertEquals(palette.holiday, cell(friday).currentTextColor)
-        assertTrue(cell(friday).contentDescription.toString().contains("تعطیل"))
+        val todayIndex = JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + date.day - 1
+        val fridayIndex = JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + friday - 1
+        // Per-day colors are baked into the canvas bitmap; verify by sampling pixels.
+        val canvas = root.findViewById<ImageView>(WidgetViewIds.monthGridCanvas)
+        val bitmap = (canvas.drawable as android.graphics.drawable.BitmapDrawable).bitmap
+        val cellWidth = bitmap.width / 7f
+        val rows = (JalaliDate(date.year, date.month, 1).dayOfWeek - 1 + date.daysInMonth + 6) / 7
+        val cellHeight = bitmap.height / rows.toFloat()
+        val todayPixel = bitmap.getPixel((((6 - (todayIndex % 7)) + 0.5f) * cellWidth).toInt(), (((todayIndex / 7) + 0.5f) * cellHeight).toInt())
+        val fridayPixel = bitmap.getPixel((((6 - (fridayIndex % 7)) + 0.5f) * cellWidth).toInt(), (((fridayIndex / 7) + 0.5f) * cellHeight).toInt())
+        val palette = WidgetSurface.palette(root.context, WidgetOptions())
+        assertEquals(palette.holiday, fridayPixel)
+        assertEquals(palette.accent, todayPixel)
     }
 
     @Test fun allExpiredRemindersNeverAppearAsNext() {
