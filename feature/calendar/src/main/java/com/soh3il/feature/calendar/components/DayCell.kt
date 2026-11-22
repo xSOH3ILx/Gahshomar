@@ -107,7 +107,7 @@ fun DayCell(
                 Spacer(modifier = Modifier.height(2.dp))
                 Box(
                     modifier = Modifier
-                        .size(4.dp)
+                        .size(6.dp)
                         .clip(CircleShape)
                         .background(
                             if (isSelected) Color.White

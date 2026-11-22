@@ -11,6 +11,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -131,6 +135,7 @@ class MainActivity : ComponentActivity() {
 
             Soh3ilTheme(themePreference = currentTheme, isAmoled = isAmoled) {
                 val coroutineScope = rememberCoroutineScope()
+                val snackbarHostState = remember { SnackbarHostState() }
                 var currentTab by rememberSaveable { mutableStateOf(0) } // 0=Calendar, 1=Settings
                 var showAddSheet by rememberSaveable { mutableStateOf(false) }
                 var savingReminder by remember { mutableStateOf(false) }
@@ -226,6 +231,7 @@ class MainActivity : ComponentActivity() {
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
+                    snackbarHost = { SnackbarHost(snackbarHostState) },
                     bottomBar = {
                         AppNavigationBar(currentTab, onTabSelected = { currentTab = it })
                     }
@@ -340,6 +346,50 @@ class MainActivity : ComponentActivity() {
                                 com.soh3il.core.jalali.JalaliDate(it.jalaliYear, it.jalaliMonth, it.jalaliDay)
                             } ?: selectedCalendarDate
 
+                            fun showRetry(message: String, retry: () -> Unit) {
+                                coroutineScope.launch {
+                                    val result = snackbarHostState.showSnackbar(
+                                        message = message,
+                                        actionLabel = "تلاش دوباره",
+                                        duration = SnackbarDuration.Long,
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) retry()
+                                }
+                            }
+
+                            fun saveReminder(reminder: com.soh3il.core.model.Reminder) {
+                                if (!savingReminder) {
+                                    savingReminder = true
+                                    coroutineScope.launch {
+                                        try {
+                                            withContext(Dispatchers.IO) { ReminderMutations.save(context, db, reminder) }
+                                            showAddSheet = false
+                                            editingReminderId = null
+                                        } catch (error: CancellationException) {
+                                            throw error
+                                        } catch (error: Exception) {
+                                            showRetry("ذخیره یا زمانبندی انجام نشد") { saveReminder(reminder) }
+                                        } finally { savingReminder = false }
+                                    }
+                                }
+                            }
+
+                            fun deleteReminder(reminder: com.soh3il.core.model.Reminder) {
+                                if (!savingReminder) {
+                                    savingReminder = true
+                                    coroutineScope.launch {
+                                        try {
+                                            withContext(Dispatchers.IO) { ReminderMutations.delete(context, db, reminder) }
+                                            showAddSheet = false
+                                            editingReminderId = null
+                                        } catch (error: CancellationException) { throw error }
+                                        catch (error: Exception) {
+                                            showRetry("حذف کامل نشد") { deleteReminder(reminder) }
+                                        } finally { savingReminder = false }
+                                    }
+                                }
+                            }
+
                             androidx.compose.runtime.key(reminderSession) { AddReminderSheet(
                                 initialDate = initialDate,
                                 existingReminder = editingReminder,
@@ -347,38 +397,9 @@ class MainActivity : ComponentActivity() {
                                     showAddSheet = false
                                     editingReminderId = null
                                 },
-                                onSaveReminder = { reminder ->
-                                    if (!savingReminder) {
-                                        savingReminder = true
-                                        coroutineScope.launch {
-                                            try {
-                                                withContext(Dispatchers.IO) { ReminderMutations.save(context, db, reminder) }
-                                                showAddSheet = false
-                                                editingReminderId = null
-                                            } catch (error: CancellationException) {
-                                                throw error
-                                            } catch (error: Exception) {
-                                                android.widget.Toast.makeText(context, "ذخیره یا زمان‌بندی انجام نشد؛ دوباره تلاش کنید.", android.widget.Toast.LENGTH_LONG).show()
-                                            } finally { savingReminder = false }
-                                        }
-                                    }
-                                },
+                                onSaveReminder = { reminder -> saveReminder(reminder) },
                                 isSaving = savingReminder,
-                                onDeleteReminder = { reminder ->
-                                    if (!savingReminder) {
-                                        savingReminder = true
-                                        coroutineScope.launch {
-                                            try {
-                                                withContext(Dispatchers.IO) { ReminderMutations.delete(context, db, reminder) }
-                                                showAddSheet = false
-                                                editingReminderId = null
-                                            } catch (error: CancellationException) { throw error }
-                                            catch (error: Exception) {
-                                                android.widget.Toast.makeText(context, "حذف کامل نشد؛ یادآور را بررسی کنید.", android.widget.Toast.LENGTH_LONG).show()
-                                            } finally { savingReminder = false }
-                                        }
-                                    }
-                                }
+                                onDeleteReminder = { reminder -> deleteReminder(reminder) }
                             ) }
                         }
                     }

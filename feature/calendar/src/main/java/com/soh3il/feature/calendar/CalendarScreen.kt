@@ -1,5 +1,13 @@
 package com.soh3il.feature.calendar
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -153,106 +161,126 @@ fun CalendarScreen(
                 }
             }
 
-            if (viewMode == 0) {
-                // 1. Month Header (Centered Month, Left=Previous, Right=Next)
-                CalendarHeader(
-                    currentDate = displayedDate,
-                    onPreviousMonth = { displayedDate = displayedDate.plusMonths(-1); selectDisplayedMonth() },
-                    onNextMonth = { displayedDate = displayedDate.plusMonths(1); selectDisplayedMonth() },
-                    onTodayClick = {
-                        displayedDate = today
-                        selectedDate = today
+            Box(modifier = Modifier.weight(1f)) {
+                AnimatedContent(
+                    targetState = viewMode,
+                    transitionSpec = {
+                        (
+                            fadeIn(animationSpec = tween(220)) + slideInVertically(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow,
+                                ),
+                                initialOffsetY = { it / 12 },
+                            )
+                        ) togetherWith fadeOut(animationSpec = tween(160))
                     },
-                    onHeaderTitleClick = { showYearMonthPicker = true }
-                )
-
-                if (showYearMonthPicker) {
-                    YearMonthPickerDialog(
-                        currentYear = displayedDate.year,
-                        currentMonth = displayedDate.month,
-                        onDismiss = { showYearMonthPicker = false },
-                        onConfirm = { year, month ->
-                            val maxDays = com.soh3il.core.jalali.JalaliDate.daysInMonth(year, month)
-                            val safeDay = minOf(selectedDate.day, maxDays)
-                            val newDate = com.soh3il.core.jalali.JalaliDate(year, month, safeDay)
-                            displayedDate = newDate
-                            selectedDate = newDate
-                            showYearMonthPicker = false
-                        }
-                    )
-                }
-
-                // 2. Weekdays bar
-                WeekdaysRow()
-
-                // 3. Days Grid with Horizontal Swipe gesture
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .pointerInput(displayedDate) {
-                            detectHorizontalDragGestures(
-                                onDragStart = { totalDragDistance = 0f },
-                                onDragEnd = {
-                                    val threshold = 40.dp.toPx()
-                                    // [LOCKED RULE] DO NOT CHANGE: Swipe gesture mapping strictly locked per user requirement:
-                                    // Positive drag (>0) -> plusMonths(1)
-                                    // Negative drag (<0) -> plusMonths(-1)
-                                    if (totalDragDistance > threshold) {
-                                        displayedDate = displayedDate.plusMonths(1)
-                                        selectDisplayedMonth()
-                                    } else if (totalDragDistance < -threshold) {
-                                        displayedDate = displayedDate.plusMonths(-1)
-                                        selectDisplayedMonth()
-                                    }
+                    label = "viewModeTransition",
+                ) { mode ->
+                    if (mode == 0) {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            // 1. Month Header (Centered Month, Left=Previous, Right=Next)
+                            CalendarHeader(
+                                currentDate = displayedDate,
+                                onPreviousMonth = { displayedDate = displayedDate.plusMonths(-1); selectDisplayedMonth() },
+                                onNextMonth = { displayedDate = displayedDate.plusMonths(1); selectDisplayedMonth() },
+                                onTodayClick = {
+                                    displayedDate = today
+                                    selectedDate = today
                                 },
-                                onHorizontalDrag = { _, dragAmount ->
-                                    totalDragDistance += dragAmount
-                                }
+                                onHeaderTitleClick = { showYearMonthPicker = true }
+                            )
+
+                            if (showYearMonthPicker) {
+                                YearMonthPickerDialog(
+                                    currentYear = displayedDate.year,
+                                    currentMonth = displayedDate.month,
+                                    onDismiss = { showYearMonthPicker = false },
+                                    onConfirm = { year, month ->
+                                        val maxDays = com.soh3il.core.jalali.JalaliDate.daysInMonth(year, month)
+                                        val safeDay = minOf(selectedDate.day, maxDays)
+                                        val newDate = com.soh3il.core.jalali.JalaliDate(year, month, safeDay)
+                                        displayedDate = newDate
+                                        selectedDate = newDate
+                                        showYearMonthPicker = false
+                                    }
+                                )
+                            }
+
+                            // 2. Weekdays bar
+                            WeekdaysRow()
+
+                            // 3. Days Grid with Horizontal Swipe gesture
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .pointerInput(displayedDate) {
+                                        detectHorizontalDragGestures(
+                                            onDragStart = { totalDragDistance = 0f },
+                                            onDragEnd = {
+                                                val threshold = 40.dp.toPx()
+                                                // [LOCKED RULE] DO NOT CHANGE: Swipe gesture mapping strictly locked per user requirement:
+                                                // Positive drag (>0) -> plusMonths(1)
+                                                // Negative drag (<0) -> plusMonths(-1)
+                                                if (totalDragDistance > threshold) {
+                                                    displayedDate = displayedDate.plusMonths(1)
+                                                    selectDisplayedMonth()
+                                                } else if (totalDragDistance < -threshold) {
+                                                    displayedDate = displayedDate.plusMonths(-1)
+                                                    selectDisplayedMonth()
+                                                }
+                                            },
+                                            onHorizontalDrag = { _, dragAmount ->
+                                                totalDragDistance += dragAmount
+                                            }
+                                        )
+                                    }
+                            ) {
+                                MonthGridView(
+                                    year = displayedDate.year,
+                                    month = displayedDate.month,
+                                    selectedDate = selectedDate,
+                                    today = today,
+                                    reminders = reminders,
+                                    occasions = monthOccasions,
+                                    onDateSelected = { selectedDate = it }
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Age since birth + countdown to the next reminder.
+                            AgeCountdownCard(
+                                state = remember(selectedDate, birthJdn, reminders) {
+                                    computeAgeCountdown(selectedDate, birthJdn, reminders)
+                                },
+                                onSetBirth = onSetBirthDate,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // 4. Selected Day Info & Occasions & Reminders
+                            SelectedDayDetails(
+                                selectedDate = selectedDate,
+                                occasions = selectedDayOccasions,
+                                reminders = reminders.filter { it.visibleOn(selectedDate) },
+                                onReminderClick = onReminderClick,
+                                onAddReminderClick = onAddReminderClick,
+                                modifier = Modifier.weight(1f)
                             )
                         }
-                ) {
-                    MonthGridView(
-                        year = displayedDate.year,
-                        month = displayedDate.month,
-                        selectedDate = selectedDate,
-                        today = today,
-                        reminders = reminders,
-                        occasions = monthOccasions,
-                        onDateSelected = { selectedDate = it }
-                    )
+                    } else {
+                        // Agenda / Schedule View
+                        AgendaView(
+                            today = today,
+                            reminders = reminders,
+                            additionalOccasions = additionalOccasions,
+                            onReminderClick = onReminderClick,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Age since birth + countdown to the next reminder.
-                AgeCountdownCard(
-                    state = remember(selectedDate, birthJdn, reminders) {
-                        computeAgeCountdown(selectedDate, birthJdn, reminders)
-                    },
-                    onSetBirth = onSetBirthDate,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // 4. Selected Day Info & Occasions & Reminders
-                SelectedDayDetails(
-                    selectedDate = selectedDate,
-                    occasions = selectedDayOccasions,
-                    reminders = reminders.filter { it.visibleOn(selectedDate) },
-                    onReminderClick = onReminderClick,
-                    onAddReminderClick = onAddReminderClick,
-                    modifier = Modifier.weight(1f)
-                )
-            } else {
-                // Agenda / Schedule View
-                AgendaView(
-                    today = today,
-                    reminders = reminders,
-                    additionalOccasions = additionalOccasions,
-                    onReminderClick = onReminderClick,
-                    modifier = Modifier.fillMaxSize()
-                )
             }
         }
     }

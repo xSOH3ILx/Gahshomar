@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -74,7 +75,10 @@ fun CalendarHeader(
                     .clip(RoundedCornerShape(8.dp))
                     .then(
                         if (onHeaderTitleClick != null) {
-                            Modifier.clickable { onHeaderTitleClick() }
+                            Modifier.clickable(
+                                role = Role.Button,
+                                onClickLabel = "باز کردن انتخابگر سال و ماه",
+                            ) { onHeaderTitleClick() }
                         } else Modifier
                     )
                     .padding(horizontal = 6.dp, vertical = 2.dp)
@@ -103,8 +107,8 @@ fun CalendarHeader(
                 val companionText = "$gregMonthName ${gregConv.gregorian.year.toPersianDigits()} • $hijriMonthName ${gregConv.hijriYear.toPersianDigits()}"
                 Text(
                     text = companionText,
-                    fontSize = 10.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Normal
                 )
             }

@@ -31,7 +31,7 @@
    - Always set `icon = {}` on both `SegmentedButton` instances.
 
 6. **HOLIDAY SELECTION COLOR (LOCKED)**:
-   - When a holiday cell is selected on the calendar grid (`isSelected && isHoliday`), its background MUST be `FarsiHolidayRed` (`#EF4444`), NEVER `MaterialTheme.colorScheme.primary` (Blue).
+   - When a holiday cell is selected on the calendar grid (`isSelected && isHoliday`), its background MUST be `FarsiHolidayRed` (`#DC2626`), NEVER `MaterialTheme.colorScheme.primary` (Blue).
    - Text color for selected cells must be `Color.White`.
 
 7. **APP BRANDING & TYPOGRAPHY**:
@@ -182,7 +182,7 @@ The project follows a strict multi-module Clean Architecture pattern:
 - Use Material 3 Expressive motion, shape and color tokens across all screens, dialogs, notifications, widgets and settings. Do NOT use hardcoded hex colors inside feature Composables. All colors must come from `MaterialTheme.colorScheme` or a theme-aware `CompositionLocal` in `:core:designsystem`.
 - Use Material 3 surface container roles (`surfaceContainerLow`, `surfaceContainer`, `surfaceContainerHigh`) for Cards, BottomSheets, and Dialogs instead of `surfaceVariant.copy(alpha = ...)`.
 - Official holidays and Fridays in `DayCell.kt`, `SelectedDayDetails.kt`, and `AgendaView.kt` must use theme-aware semantic tokens (`colorScheme.error` / `errorContainer` / `onErrorContainer`) that maintain a minimum 4.5:1 contrast ratio in both Light and Dark themes.
-  - *(Note: When a holiday cell is selected on the calendar grid [`isSelected && isHoliday`], its background MUST be `FarsiHolidayRed` [`#EF4444`] with `Color.White` text per Core Invariant 6).*
+  - *(Note: When a holiday cell is selected on the calendar grid [`isSelected && isHoliday`], its background MUST be `FarsiHolidayRed` [`#DC2626`] with `Color.White` text per Core Invariant 6).*
 - `DayCell.kt` must visually distinguish all 4 states clearly:
   - Selected Today: Filled primary container, onPrimary text.
   - Unselected Today: 1.5.dp primary border, primary text.

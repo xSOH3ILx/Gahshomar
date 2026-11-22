@@ -19,8 +19,10 @@ val FarsiLightSurfaceVariant = Color(0xFFF4F4F5)
 val FarsiLightBorder = Color(0xFFE4E4E7)
 
 // Status & Indicators
-val FarsiHolidayRed = Color(0xFFEF4444)
-val FarsiHolidayRedContainer = Color(0x20EF4444)
+// Darkened one step from #EF4444 so white text on selected holiday cells
+// passes WCAG AA (≈4.6:1) while keeping the same visual hue family.
+val FarsiHolidayRed = Color(0xFFDC2626)
+val FarsiHolidayRedContainer = Color(0x20DC2626)
 val FarsiEventGray = Color(0xFF71717A) // Event slate
 val FarsiEventGrayContainer = Color(0x2071717A)
 val FarsiSuccessGreen = Color(0xFF10B981)
