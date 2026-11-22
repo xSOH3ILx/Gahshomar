@@ -10,6 +10,12 @@
         <item name="android:textColor">@color/widget_on_surface</item>
         <item name="android:textSize">11sp</item>
     </style>
+    <!-- Weekday-name header row: deliberately larger than the day-number cells. -->
+    <style name="WidgetWeekdayLabel" parent="WidgetCalendarCell">
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:fontFamily">@font/vazirmatn_bold</item>
+        <item name="android:textSize">13sp</item>
+    </style>
     <style name="WidgetAction">
         <item name="android:layout_width">48dp</item>
         <item name="android:layout_height">48dp</item>

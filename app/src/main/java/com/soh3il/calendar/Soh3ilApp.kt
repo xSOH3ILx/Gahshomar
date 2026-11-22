@@ -17,6 +17,7 @@ class Soh3ilApp : Application() {
         super.onCreate()
         com.soh3il.core.scheduler.DateStatusRecovery.install(this)
         com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(this)
+        com.soh3il.core.scheduler.CalendarKeepAliveService.start(this)
         NotificationHelper.createNotificationChannel(this)
         LiveIconHelper.validateAndHealLauncherAliases(this)
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {

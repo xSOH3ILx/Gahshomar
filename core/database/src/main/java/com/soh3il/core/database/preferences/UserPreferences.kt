@@ -18,6 +18,7 @@ object UserPreferences {
     private const val KEY_PERSISTENT_GREGORIAN = "pref_persistent_gregorian"
     private const val KEY_PERSISTENT_HIJRI = "pref_persistent_hijri"
     private const val KEY_CONTACT_BIRTHDAYS = "pref_contact_birthdays"
+    private const val KEY_BIRTH_JDN = "pref_birth_jdn"
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -120,6 +121,16 @@ object UserPreferences {
 
     fun setContactBirthdaysEnabled(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_CONTACT_BIRTHDAYS, enabled).apply()
+    }
+
+    /** Jalali day number of the user's birth date, or null when not set. */
+    fun getBirthJdn(context: Context): Long? =
+        getPrefs(context).getLong(KEY_BIRTH_JDN, 0L).takeIf { it != 0L }
+
+    fun setBirthJdn(context: Context, jdn: Long?) {
+        val edit = getPrefs(context).edit()
+        if (jdn == null) edit.remove(KEY_BIRTH_JDN) else edit.putLong(KEY_BIRTH_JDN, jdn)
+        edit.apply()
     }
 
     private const val KEY_SNOOZE_MINUTES = "pref_snooze_minutes"

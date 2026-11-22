@@ -56,6 +56,8 @@ fun CalendarScreen(
     additionalOccasions: List<Occasion> = emptyList(),
     onAddReminderClick: (JalaliDate) -> Unit = {},
     onReminderClick: (Reminder) -> Unit = {},
+    birthJdn: Long? = null,
+    onSetBirthDate: () -> Unit = {},
     onDisplayedYearChanged: (Int) -> Unit = {},
     requestedJdn: Long? = null,
     onNavigationHandled: () -> Unit = {}
@@ -219,6 +221,17 @@ fun CalendarScreen(
                         onDateSelected = { selectedDate = it }
                     )
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Age since birth + countdown to the next reminder.
+                AgeCountdownCard(
+                    state = remember(selectedDate, birthJdn, reminders) {
+                        computeAgeCountdown(selectedDate, birthJdn, reminders)
+                    },
+                    onSetBirth = onSetBirthDate,
+                    modifier = Modifier.fillMaxWidth(),
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 

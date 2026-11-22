@@ -33,9 +33,9 @@ import kotlinx.coroutines.launch
 
 object PersistentNotificationHelper {
 
-    private const val CHANNEL_ID = "persistent_date_channel"
+    const val CHANNEL_ID = "persistent_date_channel"
     private const val CHANNEL_NAME = "نوار اعلان دائمی تاریخ"
-    private const val NOTIFICATION_ID = 2001
+    const val NOTIFICATION_ID = 2001
     const val EXTRA_DATE_JDN = "soh3il.date.jdn"
     private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val renderLock = Any()

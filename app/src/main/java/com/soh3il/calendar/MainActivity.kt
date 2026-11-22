@@ -180,6 +180,21 @@ class MainActivity : ComponentActivity() {
                     context, birthdaySolarYear, contactBirthdaysEnabled,
                     contactsPermissionGranted, integrationRefreshVersion
                 )
+                var birthJdn by rememberSaveable { mutableStateOf(UserPreferences.getBirthJdn(context)) }
+                var showBirthDatePicker by rememberSaveable { mutableStateOf(false) }
+                if (showBirthDatePicker) {
+                    val birthDate = com.soh3il.core.jalali.JalaliDate.fromJdn(birthJdn ?: com.soh3il.core.jalali.JalaliDate.now().toJdn())
+                    com.soh3il.feature.calendar.dialogs.YearMonthPickerDialog(
+                        currentYear = birthDate.year,
+                        currentMonth = birthDate.month,
+                        onDismiss = { showBirthDatePicker = false },
+                        onConfirm = { year, month ->
+                            birthJdn = com.soh3il.core.jalali.JalaliDate(year, month, 1).toJdn()
+                            UserPreferences.setBirthJdn(context, birthJdn)
+                            showBirthDatePicker = false
+                        },
+                    )
+                }
 
                 val currentVersion = remember { installedVersion(context) }
 
@@ -224,6 +239,8 @@ class MainActivity : ComponentActivity() {
                                     onDisplayedYearChanged = { birthdaySolarYear = it },
                                     reminders = reminders,
                                     additionalOccasions = contactBirthdays,
+                                    birthJdn = birthJdn,
+                                    onSetBirthDate = { showBirthDatePicker = true },
                                     onAddReminderClick = { date ->
                                         selectedCalendarJdn = date.toJdn()
                                         editingReminderId = null
@@ -254,7 +271,9 @@ class MainActivity : ComponentActivity() {
                                     onPersistentNotificationToggled = { enabled ->
                                         if (enabled) {
                                             com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(this@MainActivity, reminders)
+                                            com.soh3il.core.scheduler.CalendarKeepAliveService.start(this@MainActivity)
                                         } else {
+                                            com.soh3il.core.scheduler.CalendarKeepAliveService.stop(this@MainActivity)
                                             com.soh3il.core.scheduler.PersistentNotificationHelper.cancelNotification(this@MainActivity)
                                         }
                                         com.soh3il.calendar.widget.CalendarAppWidgetProvider.requestUpdate(this@MainActivity)
@@ -389,6 +408,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         integrationRefreshVersion++
         recoverMissedAlarms()
+        com.soh3il.core.scheduler.CalendarKeepAliveService.start(this)
         com.soh3il.core.scheduler.LiveIconHelper.updateLiveIcon(this)
         com.soh3il.core.scheduler.MidnightScheduler.scheduleMidnightAlarm(this)
         com.soh3il.calendar.widget.CalendarAppWidgetProvider.requestUpdate(this)

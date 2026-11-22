@@ -10,13 +10,13 @@
         </LinearLayout>
         <TextView android:id="@+id/month_warning" android:layout_width="match_parent" android:layout_height="16dp" android:gravity="center" android:maxLines="1" android:textSize="10sp" android:visibility="gone" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="20dp" android:orientation="horizontal">
-            <TextView android:id="@+id/month_weekday_0" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_0" />
-            <TextView android:id="@+id/month_weekday_1" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_1" />
-            <TextView android:id="@+id/month_weekday_2" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_2" />
-            <TextView android:id="@+id/month_weekday_3" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_3" />
-            <TextView android:id="@+id/month_weekday_4" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_4" />
-            <TextView android:id="@+id/month_weekday_5" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_5" />
-            <TextView android:id="@+id/month_weekday_6" style="@style/WidgetCalendarCell" android:text="@string/widget_weekday_6" />
+            <TextView android:id="@+id/month_weekday_0" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_0" />
+            <TextView android:id="@+id/month_weekday_1" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_1" />
+            <TextView android:id="@+id/month_weekday_2" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_2" />
+            <TextView android:id="@+id/month_weekday_3" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_3" />
+            <TextView android:id="@+id/month_weekday_4" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_4" />
+            <TextView android:id="@+id/month_weekday_5" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_5" />
+            <TextView android:id="@+id/month_weekday_6" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_6" />
         </LinearLayout>
         <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
             <ImageView android:id="@+id/month_grid_canvas" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" android:contentDescription="@null" />

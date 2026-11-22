@@ -86,6 +86,13 @@ class MidnightReceiver : BroadcastReceiver() {
             }
         ) {
             MidnightScheduler.scheduleMidnightAlarm(context)
+            // Persian-calendar parity: after boot or a package replacement the
+            // keep-alive service must come back so the notification survives.
+            try {
+                CalendarKeepAliveService.start(context)
+            } catch (error: Exception) {
+                Log.w(TAG, "Keep-alive service start refused: ${error.javaClass.simpleName}")
+            }
             val notificationTicket = PersistentNotificationHelper.beginRefresh(context)
             requestWidgetUpdate(context)
             val activeReminders = try {

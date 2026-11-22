@@ -1,7 +1,6 @@
 package com.soh3il.calendar.widget
 
 import android.content.Context
-import android.graphics.Color
 import android.util.SizeF
 import android.view.View
 import android.widget.RemoteViews
@@ -139,7 +138,8 @@ internal object WidgetDateRenderers {
         val first = CalendarOccurrences.weekStart(data.today)
         val counts = if (options.showReminders) data.occurrences(first, 7).groupingBy { it.date }.eachCount() else emptyMap()
         val warning = (0..6).any { !IranianHolidays.hasOfficialLunarHolidays(first.plusDays(it.toLong()).year) }
-        val gridHeight = size.height - 56 - if (warning) 16 else 0
+        val weekdayRowHeight = 22
+        val gridHeight = size.height - 56 - weekdayRowHeight - if (warning) 16 else 0
         val interactive = size.width - 20 >= 7 * 48 && gridHeight >= 48
         return RemoteViews(context.packageName, R.layout.widget_calendar_week).apply {
             WidgetSurface.apply(context, this, size, options)
@@ -152,19 +152,45 @@ internal object WidgetDateRenderers {
             setInt(R.id.widget_add, "setColorFilter", colors.accent)
             setOnClickPendingIntent(R.id.widget_add, WidgetNavigation.pending(context, id, WidgetDestination(data.today, add = true)))
             setOnClickPendingIntent(R.id.week_widget_root, WidgetNavigation.pending(context, id, WidgetDestination(data.today)))
-            WidgetViewIds.weekCells.forEachIndexed { index, view ->
-                val date = first.plusDays(index.toLong())
-                val count = counts[date] ?: 0
-                val holiday = date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }
-                val name = if (interactive) date.dayOfWeekNameFa else date.dayOfWeekNameFa.take(1)
-                setTextViewText(view, "$name\n${date.day.toPersianDigits()}" + if (count > 0) " ·" else "")
-                setTextViewTextSize(view, TypedValue.COMPLEX_UNIT_SP,
-                    WidgetSurface.fitText(context, "$name\n${date.day.toPersianDigits()}" + if (count > 0) " ·" else "",
-                        (size.width - 20) / 7, gridHeight, 14f * options.textScale))
-                setTextColor(view, if (date == data.today) colors.onAccent else if (holiday) colors.holiday else colors.text)
-                setInt(view, "setBackgroundColor", if (date == data.today) colors.accent else Color.TRANSPARENT)
-                setContentDescription(view, description(date, data.today, holiday, count))
-                setOnClickPendingIntent(view, if (interactive) WidgetNavigation.pending(context, id, WidgetDestination(date)) else null)
+            for (index in 0..6) {
+                setTextViewText(WidgetViewIds.weekWeekdays[index], first.plusDays(index.toLong()).dayOfWeekNameFa)
+                setTextColor(WidgetViewIds.weekWeekdays[index], if (index == 6) colors.holiday else colors.secondary)
+            }
+            val density = context.resources.displayMetrics.density
+            val bitmap = MonthGridPainter.render(
+                context = context,
+                widthPx = ((size.width - 20) * density).roundToInt(),
+                heightPx = (gridHeight * density).roundToInt(),
+                rows = 1,
+                cells = (0..6).map { offset ->
+                    val date = first.plusDays(offset.toLong())
+                    MonthCell(
+                        day = date.day,
+                        isToday = date == data.today,
+                        isHoliday = date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday },
+                        hasReminder = (counts[date] ?: 0) > 0,
+                    )
+                },
+                colors = colors,
+                textScale = options.textScale,
+            )
+            setImageViewBitmap(WidgetViewIds.weekGridCanvas, bitmap)
+            // Per-day touch routing: transparent click targets over the canvas
+            // bitmap, each opening its own day in the app. The row is RTL
+            // (column 0 = right-most), matching MonthGridPainter's layout.
+            setViewVisibility(R.id.week_cells, if (interactive) View.VISIBLE else View.GONE)
+            if (interactive) {
+                WidgetViewIds.weekCells.forEachIndexed { index, overlay ->
+                    val date = first.plusDays(index.toLong())
+                    val holiday = date.dayOfWeek == 7 || data.occasions(date).any { it.isHoliday }
+                    setContentDescription(overlay, description(date, data.today, holiday, counts[date] ?: 0))
+                    setOnClickPendingIntent(overlay, WidgetNavigation.pending(context, id, WidgetDestination(date)))
+                }
+            } else {
+                WidgetViewIds.weekCells.forEach { overlay ->
+                    setContentDescription(overlay, "")
+                    setOnClickPendingIntent(overlay, null)
+                }
             }
         }
     }

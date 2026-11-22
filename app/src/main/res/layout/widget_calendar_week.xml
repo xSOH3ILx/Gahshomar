@@ -8,14 +8,26 @@
             <ImageButton android:id="@+id/widget_configure" style="@style/WidgetAction" android:src="@drawable/ic_widget_settings" android:contentDescription="@string/widget_configure" />
         </LinearLayout>
         <TextView android:id="@+id/week_warning" android:layout_width="match_parent" android:layout_height="16dp" android:gravity="center" android:maxLines="1" android:textSize="10sp" android:visibility="gone" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal">
-            <TextView android:id="@+id/week_cell_0" style="@style/WidgetCalendarCell" android:maxLines="3" />
-            <TextView android:id="@+id/week_cell_1" style="@style/WidgetCalendarCell" android:maxLines="3" />
-            <TextView android:id="@+id/week_cell_2" style="@style/WidgetCalendarCell" android:maxLines="3" />
-            <TextView android:id="@+id/week_cell_3" style="@style/WidgetCalendarCell" android:maxLines="3" />
-            <TextView android:id="@+id/week_cell_4" style="@style/WidgetCalendarCell" android:maxLines="3" />
-            <TextView android:id="@+id/week_cell_5" style="@style/WidgetCalendarCell" android:maxLines="3" />
-            <TextView android:id="@+id/week_cell_6" style="@style/WidgetCalendarCell" android:maxLines="3" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="22dp" android:orientation="horizontal">
+            <TextView android:id="@+id/week_weekday_0" style="@style/WidgetWeekdayLabel" />
+            <TextView android:id="@+id/week_weekday_1" style="@style/WidgetWeekdayLabel" />
+            <TextView android:id="@+id/week_weekday_2" style="@style/WidgetWeekdayLabel" />
+            <TextView android:id="@+id/week_weekday_3" style="@style/WidgetWeekdayLabel" />
+            <TextView android:id="@+id/week_weekday_4" style="@style/WidgetWeekdayLabel" />
+            <TextView android:id="@+id/week_weekday_5" style="@style/WidgetWeekdayLabel" />
+            <TextView android:id="@+id/week_weekday_6" style="@style/WidgetWeekdayLabel" />
         </LinearLayout>
+        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+            <ImageView android:id="@+id/week_grid_canvas" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" android:contentDescription="@null" />
+            <LinearLayout android:id="@+id/week_cells" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal">
+                <TextView android:id="@+id/week_cell_0" style="@style/WidgetCalendarCell" />
+                <TextView android:id="@+id/week_cell_1" style="@style/WidgetCalendarCell" />
+                <TextView android:id="@+id/week_cell_2" style="@style/WidgetCalendarCell" />
+                <TextView android:id="@+id/week_cell_3" style="@style/WidgetCalendarCell" />
+                <TextView android:id="@+id/week_cell_4" style="@style/WidgetCalendarCell" />
+                <TextView android:id="@+id/week_cell_5" style="@style/WidgetCalendarCell" />
+                <TextView android:id="@+id/week_cell_6" style="@style/WidgetCalendarCell" />
+            </LinearLayout>
+        </FrameLayout>
     </LinearLayout>
 </FrameLayout>

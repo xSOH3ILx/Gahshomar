@@ -4,6 +4,10 @@ import com.soh3il.calendar.R
 
 internal object WidgetViewIds {
     val monthGridCanvas = R.id.month_grid_canvas
+    val weekGridCanvas = R.id.week_grid_canvas
+    val weekWeekdays = intArrayOf(
+        R.id.week_weekday_0, R.id.week_weekday_1, R.id.week_weekday_2, R.id.week_weekday_3, R.id.week_weekday_4, R.id.week_weekday_5, R.id.week_weekday_6
+    )
     val weekdays = intArrayOf(
         R.id.month_weekday_0, R.id.month_weekday_1, R.id.month_weekday_2, R.id.month_weekday_3, R.id.month_weekday_4, R.id.month_weekday_5, R.id.month_weekday_6
     )
