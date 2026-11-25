@@ -23,17 +23,17 @@ internal object DateNotificationAssets {
         val cornerRadius = sizePx * 0.24f
         val fullRect = android.graphics.RectF(0f, 0f, sizePx.toFloat(), sizePx.toFloat())
 
-        // پس‌زمینه برند اپ (سبز فسفری SOH3IL) با کنتراست یکنواخت در تم روشن و تیره
+        // پس‌زمینه سرمه‌ای شب (هماهنگ با لوگوی مدار خورشید) با نوار طلایی برای کنتراست یکنواخت در تم روشن و تیره
         val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(35, 39, 43)
+            color = Color.rgb(15, 23, 42)
             style = Paint.Style.FILL
         }
         canvas.drawRoundRect(fullRect, cornerRadius, cornerRadius, bgPaint)
 
-        // نوار بالایی نام ماه — بدنه تیره برند با نوار روشن برای کنتراست بالا در هر دو تم
+        // نوار بالایی نام ماه — طلایی خورشیدی با متن تیره برای خوانایی بالا در هر دو تم و صفحه‌قفل
         val headerHeight = sizePx * 0.34f
         val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(215, 255, 74)
+            color = Color.rgb(251, 191, 36)
             style = Paint.Style.FILL
         }
         val headerPath = android.graphics.Path().apply {
@@ -56,7 +56,7 @@ internal object DateNotificationAssets {
         // متن نام ماه خورشیدی
         val monthText = today.monthNameFa
         val monthPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(35, 39, 43)
+            color = Color.rgb(15, 23, 42)
             typeface = androidx.core.content.res.ResourcesCompat.getFont(context, com.soh3il.core.designsystem.R.font.vazirmatn_bold)
             textSize = headerHeight * 0.52f
             textAlign = Paint.Align.CENTER
@@ -69,7 +69,7 @@ internal object DateNotificationAssets {
         // عدد بزرگ روز خورشیدی در بدنه کارت
         val dayText = today.day.toPersianDigits()
         val dayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(215, 255, 74)
+            color = Color.WHITE
             typeface = androidx.core.content.res.ResourcesCompat.getFont(context, com.soh3il.core.designsystem.R.font.vazirmatn_bold)
             textSize = (sizePx - headerHeight) * 0.65f
             textAlign = Paint.Align.CENTER

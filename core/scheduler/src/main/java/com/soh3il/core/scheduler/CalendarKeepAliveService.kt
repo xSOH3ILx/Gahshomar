@@ -15,6 +15,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.soh3il.core.database.preferences.UserPreferences
+import com.soh3il.core.designsystem.utils.toPersianDigits
+import com.soh3il.core.jalali.JalaliDate
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -142,9 +144,18 @@ class CalendarKeepAliveService : Service() {
             },
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        val today = JalaliDate.now()
+        val showOnLockscreen = UserPreferences.isLockscreenCalendarEnabled(this)
+        val dynamicIconEnabled = UserPreferences.isDynamicNotificationIconEnabled(this)
+        val smallIconRes = if (showOnLockscreen && dynamicIconEnabled) {
+            DateNotificationAssets.getDayDrawableRes(this, today.day)
+        } else {
+            com.soh3il.core.designsystem.R.drawable.ic_stat_calendar
+        }
         val built = NotificationCompat.Builder(this, PersistentNotificationHelper.CHANNEL_ID)
-            .setSmallIcon(com.soh3il.core.designsystem.R.drawable.ic_stat_calendar)
-            .setContentTitle("گاه‌شمار خورشیدی")
+            .setSmallIcon(smallIconRes)
+            .setContentTitle(if (showOnLockscreen) "${today.day.toPersianDigits()} ${today.monthNameFa} ${today.year.toPersianDigits()}" else "گاه‌شمار خورشیدی")
+            .setVisibility(if (showOnLockscreen) NotificationCompat.VISIBILITY_PUBLIC else NotificationCompat.VISIBILITY_PRIVATE)
             .setContentIntent(contentIntent)
             .setDeleteIntent(deleteIntent)
             .setOngoing(true)

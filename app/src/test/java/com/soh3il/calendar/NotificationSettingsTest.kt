@@ -77,6 +77,31 @@ class NotificationSettingsTest {
         assertEquals("محتوای تقویم پنهان است", notification.publicVersion.extras.getCharSequence("android.text").toString())
     }
 
+    @Test fun lockscreenAndDynamicIconPreferenceChangesTriggerNeedsRefreshAndPreserveStatusDayNumber() {
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+        UserPreferences.setLockscreenCalendarEnabled(context, true)
+        UserPreferences.setDynamicNotificationIconEnabled(context, true)
+        PersistentNotificationHelper.updateNotification(context, emptyList())
+
+        val active = manager.activeNotifications.single { it.id == PersistentNotificationHelper.NOTIFICATION_ID }.notification
+        val day = com.soh3il.core.jalali.JalaliDate.now().day.coerceIn(1, 31)
+        val expectedDayRes = context.resources.getIdentifier("ic_stat_day_$day", "drawable", context.packageName)
+        assertTrue(expectedDayRes != 0)
+        assertEquals(expectedDayRes, active.smallIcon.resId)
+        assertEquals(expectedDayRes, active.publicVersion.smallIcon.resId)
+        assertFalse(PersistentNotificationHelper.needsRefresh(context))
+
+        UserPreferences.setLockscreenCalendarEnabled(context, false)
+        assertTrue(PersistentNotificationHelper.needsRefresh(context))
+        PersistentNotificationHelper.updateNotification(context, emptyList())
+        assertFalse(PersistentNotificationHelper.needsRefresh(context))
+
+        UserPreferences.setLockscreenCalendarEnabled(context, true)
+        UserPreferences.setDynamicNotificationIconEnabled(context, false)
+        assertTrue(PersistentNotificationHelper.needsRefresh(context))
+    }
+
     @Test fun quietPeriodCalculationHandlesNormalAndOvernightSpans() {
         // Disabled quiet hours always returns false
         UserPreferences.setQuietHoursEnabled(context, false)

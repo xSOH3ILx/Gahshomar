@@ -38,6 +38,8 @@ object PersistentNotificationHelper {
     private const val CHANNEL_NAME = "نوار اعلان دائمی تاریخ"
     const val NOTIFICATION_ID = 2001
     const val EXTRA_DATE_JDN = "soh3il.date.jdn"
+    const val EXTRA_LOCKSCREEN_ENABLED = "soh3il.date.lockscreen_enabled"
+    const val EXTRA_DYNAMIC_ICON_ENABLED = "soh3il.date.dynamic_icon_enabled"
     private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val renderLock = Any()
     private var generation = 0L
@@ -296,13 +298,20 @@ object PersistentNotificationHelper {
         // The system may display the main small icon on the lock screen or AOD
         // even when it uses a publicVersion for the notification contents.
         val showOnLockscreen = UserPreferences.isLockscreenCalendarEnabled(context)
-        val smallIconRes = if (showOnLockscreen && UserPreferences.isDynamicNotificationIconEnabled(context)) {
+        val dynamicIconEnabled = UserPreferences.isDynamicNotificationIconEnabled(context)
+        val smallIconRes = if (showOnLockscreen && dynamicIconEnabled) {
             DateNotificationAssets.getDayDrawableRes(context, today.day)
         } else {
             com.soh3il.core.designsystem.R.drawable.ic_stat_calendar
         }
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .addExtras(Bundle().apply { putLong(EXTRA_DATE_JDN, today.toJdn()) })
+            .addExtras(
+                Bundle().apply {
+                    putLong(EXTRA_DATE_JDN, today.toJdn())
+                    putBoolean(EXTRA_LOCKSCREEN_ENABLED, showOnLockscreen)
+                    putBoolean(EXTRA_DYNAMIC_ICON_ENABLED, dynamicIconEnabled)
+                }
+            )
             .setContentTitle(fullTitle)
             .setContentText(shortSummary)
             .setStyle(
@@ -339,6 +348,7 @@ object PersistentNotificationHelper {
 
         val publicVersion = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(if (showOnLockscreen) smallIconRes else com.soh3il.core.designsystem.R.drawable.ic_stat_calendar)
+            .apply { if (showOnLockscreen) setLargeIcon(dateBadgeBitmap) }
             .setContentTitle(if (showOnLockscreen) fullTitle else null)
             .setContentText(if (showOnLockscreen) shortSummary else "محتوای تقویم پنهان است")
             .setCategory(NotificationCompat.CATEGORY_STATUS)
@@ -406,6 +416,10 @@ object PersistentNotificationHelper {
         val current = manager.activeNotifications.firstOrNull { it.id == NOTIFICATION_ID } ?: return true
         val notification = current.notification
         if (notification.extras?.getLong(EXTRA_DATE_JDN, Long.MIN_VALUE) != JalaliDate.now().toJdn()) return true
+        if (notification.extras?.containsKey(EXTRA_LOCKSCREEN_ENABLED) != true ||
+            notification.extras.getBoolean(EXTRA_LOCKSCREEN_ENABLED) != UserPreferences.isLockscreenCalendarEnabled(context)) return true
+        if (notification.extras?.containsKey(EXTRA_DYNAMIC_ICON_ENABLED) != true ||
+            notification.extras.getBoolean(EXTRA_DYNAMIC_ICON_ENABLED) != UserPreferences.isDynamicNotificationIconEnabled(context)) return true
         if (notification.channelId != CHANNEL_ID) return true
         if ((notification.flags and Notification.FLAG_NO_CLEAR) == 0) return true
         if (notification.deleteIntent == null) return true
