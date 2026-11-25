@@ -1,26 +1,196 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/month_widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:layoutDirection="rtl">
-    <ImageView android:id="@+id/widget_background" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/widget_bg" android:importantForAccessibility="no" android:contentDescription="@null" />
-    <LinearLayout android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:paddingHorizontal="10dp" android:paddingVertical="4dp">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="48dp" android:orientation="horizontal" android:gravity="center_vertical">
-            <ImageButton android:id="@+id/month_previous" style="@style/WidgetAction" android:src="@drawable/ic_widget_previous" android:contentDescription="@string/widget_previous_month" />
-            <TextView android:id="@+id/month_title" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:fontFamily="@font/vazirmatn_bold" android:gravity="center" android:maxLines="1" android:text="@string/widget_month_label" android:textColor="@color/widget_on_surface" android:contentDescription="@string/widget_reset_month" />
-            <ImageButton android:id="@+id/month_next" style="@style/WidgetAction" android:src="@drawable/ic_widget_next" android:contentDescription="@string/widget_next_month" />
-            <ImageButton android:id="@+id/widget_configure" style="@style/WidgetAction" android:src="@drawable/ic_widget_settings" android:contentDescription="@string/widget_configure" />
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/month_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layoutDirection="rtl">
+
+    <ImageView
+        android:id="@+id/widget_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_bg" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp">
+
+                <ImageView
+                    android:id="@+id/month_previous_bg"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_pill_bg"
+                    android:tint="@color/widget_surface_high" />
+
+                <ImageButton
+                    android:id="@+id/month_previous"
+                    style="@style/WidgetAction"
+                    android:contentDescription="@string/widget_previous_month"
+                    android:src="@drawable/ic_widget_previous" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="0dp"
+                android:layout_height="36dp"
+                android:layout_marginHorizontal="4dp"
+                android:layout_weight="1">
+
+                <ImageView
+                    android:id="@+id/month_title_bg"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:scaleType="fitXY"
+                    android:src="@drawable/widget_pill_bg"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/month_title"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="@string/widget_reset_month"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/vazirmatn_bold"
+                    android:gravity="center"
+                    android:maxLines="1"
+                    android:paddingHorizontal="8dp"
+                    android:text="@string/widget_month_label"
+                    android:textColor="@color/widget_on_surface" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp">
+
+                <ImageView
+                    android:id="@+id/month_next_bg"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_pill_bg"
+                    android:tint="@color/widget_surface_high" />
+
+                <ImageButton
+                    android:id="@+id/month_next"
+                    style="@style/WidgetAction"
+                    android:contentDescription="@string/widget_next_month"
+                    android:src="@drawable/ic_widget_next" />
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="48dp"
+                android:layout_height="48dp">
+
+                <ImageView
+                    android:id="@+id/widget_configure_bg"
+                    android:layout_width="36dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="center"
+                    android:contentDescription="@null"
+                    android:importantForAccessibility="no"
+                    android:src="@drawable/widget_pill_bg"
+                    android:tint="@color/widget_surface_high" />
+
+                <ImageButton
+                    android:id="@+id/widget_configure"
+                    style="@style/WidgetAction"
+                    android:contentDescription="@string/widget_configure"
+                    android:src="@drawable/ic_widget_settings" />
+            </FrameLayout>
         </LinearLayout>
-        <TextView android:id="@+id/month_warning" android:layout_width="match_parent" android:layout_height="16dp" android:gravity="center" android:maxLines="1" android:textSize="10sp" android:visibility="gone" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="20dp" android:orientation="horizontal">
-            <TextView android:id="@+id/month_weekday_0" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_0" />
-            <TextView android:id="@+id/month_weekday_1" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_1" />
-            <TextView android:id="@+id/month_weekday_2" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_2" />
-            <TextView android:id="@+id/month_weekday_3" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_3" />
-            <TextView android:id="@+id/month_weekday_4" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_4" />
-            <TextView android:id="@+id/month_weekday_5" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_5" />
-            <TextView android:id="@+id/month_weekday_6" style="@style/WidgetWeekdayLabel" android:text="@string/widget_weekday_6" />
+
+        <TextView
+            android:id="@+id/month_warning"
+            android:layout_width="match_parent"
+            android:layout_height="16dp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:textSize="10sp"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/month_weekday_0"
+                style="@style/WidgetWeekdayLabel"
+                android:text="@string/widget_weekday_0" />
+
+            <TextView
+                android:id="@+id/month_weekday_1"
+                style="@style/WidgetWeekdayLabel"
+                android:text="@string/widget_weekday_1" />
+
+            <TextView
+                android:id="@+id/month_weekday_2"
+                style="@style/WidgetWeekdayLabel"
+                android:text="@string/widget_weekday_2" />
+
+            <TextView
+                android:id="@+id/month_weekday_3"
+                style="@style/WidgetWeekdayLabel"
+                android:text="@string/widget_weekday_3" />
+
+            <TextView
+                android:id="@+id/month_weekday_4"
+                style="@style/WidgetWeekdayLabel"
+                android:text="@string/widget_weekday_4" />
+
+            <TextView
+                android:id="@+id/month_weekday_5"
+                style="@style/WidgetWeekdayLabel"
+                android:text="@string/widget_weekday_5" />
+
+            <TextView
+                android:id="@+id/month_weekday_6"
+                style="@style/WidgetWeekdayLabel"
+                android:text="@string/widget_weekday_6" />
         </LinearLayout>
-        <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
-            <ImageView android:id="@+id/month_grid_canvas" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:importantForAccessibility="no" android:contentDescription="@null" />
-            <LinearLayout android:id="@+id/month_row_0" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ImageView
+                android:id="@+id/month_grid_canvas"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY" />
+
+            <LinearLayout
+                android:id="@+id/month_row_0"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:orientation="horizontal">
                 <TextView android:id="@+id/month_cell_0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
@@ -29,7 +199,13 @@
                 <TextView android:id="@+id/month_cell_5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
             </LinearLayout>
-            <LinearLayout android:id="@+id/month_row_1" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
+            <LinearLayout
+                android:id="@+id/month_row_1"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:orientation="horizontal">
                 <TextView android:id="@+id/month_cell_7" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_8" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_9" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
@@ -38,7 +214,13 @@
                 <TextView android:id="@+id/month_cell_12" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_13" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
             </LinearLayout>
-            <LinearLayout android:id="@+id/month_row_2" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
+            <LinearLayout
+                android:id="@+id/month_row_2"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:orientation="horizontal">
                 <TextView android:id="@+id/month_cell_14" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_15" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_16" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
@@ -47,7 +229,13 @@
                 <TextView android:id="@+id/month_cell_19" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_20" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
             </LinearLayout>
-            <LinearLayout android:id="@+id/month_row_3" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
+            <LinearLayout
+                android:id="@+id/month_row_3"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:orientation="horizontal">
                 <TextView android:id="@+id/month_cell_21" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_22" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_23" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
@@ -56,7 +244,13 @@
                 <TextView android:id="@+id/month_cell_26" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_27" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
             </LinearLayout>
-            <LinearLayout android:id="@+id/month_row_4" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
+            <LinearLayout
+                android:id="@+id/month_row_4"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:orientation="horizontal">
                 <TextView android:id="@+id/month_cell_28" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_29" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_30" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
@@ -65,7 +259,13 @@
                 <TextView android:id="@+id/month_cell_33" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_34" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
             </LinearLayout>
-            <LinearLayout android:id="@+id/month_row_5" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="horizontal" android:background="@android:color/transparent">
+            <LinearLayout
+                android:id="@+id/month_row_5"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1"
+                android:background="@android:color/transparent"
+                android:orientation="horizontal">
                 <TextView android:id="@+id/month_cell_35" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_36" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />
                 <TextView android:id="@+id/month_cell_37" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@android:color/transparent" android:textSize="0sp" />

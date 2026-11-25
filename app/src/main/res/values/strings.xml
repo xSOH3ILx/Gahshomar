@@ -56,11 +56,16 @@
     <string name="widget_preview_day_30">۳۰</string>
     <string name="widget_preview_day_31">۳۱</string>
     <string name="widget_week_label">هفتهٔ گاه‌شمار خورشیدی</string>
-    <string name="widget_agenda_label">دستور کار گاه‌شمار خورشیدی</string>
+    <string name="widget_agenda_label">رویدادهای گاه‌شمار خورشیدی</string>
     <string name="widget_agenda_empty">در هفت روز آینده یادآوری ندارید</string>
     <string name="widget_add_reminder">افزودن یادآور</string>
     <string name="widget_configure">تنظیم ویجت</string>
     <string name="widget_previous_month">ماه قبل</string>
     <string name="widget_next_month">ماه بعد</string>
     <string name="widget_reset_month">بازگشت به امروز</string>
+    <string name="widget_daily_desc">نمایش روز جاری، تاریخ میلادی و قمری، مناسبت‌ها و یادآور بعدی</string>
+    <string name="widget_compact_desc">بَدج فشرده تاریخ خورشیدی و شمارش یادآورهای امروز</string>
+    <string name="widget_month_desc">نمای کامل ماه خورشیدی با تعطیلات و نشانگر یادآورها</string>
+    <string name="widget_week_desc">نمای هفتگی تقویم خورشیدی همراه با دسترسی سریع ثبت یادآور</string>
+    <string name="widget_agenda_desc">فهرست رویدادها، مناسبت‌ها و شمارش معکوس ۷ روز پیش رو</string>
 </resources>

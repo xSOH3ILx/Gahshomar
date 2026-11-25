@@ -2,10 +2,13 @@
 <resources>
     <color name="dynamic_icon_background">#5B626A</color>
     <color name="dynamic_icon_digit">#D7FF4A</color>
-    <color name="widget_surface">#1E293B</color>
-    <color name="widget_surface_stroke">#334155</color>
-    <color name="widget_primary">#38BDF8</color>
-    <color name="widget_on_surface">#F8FAFC</color>
-    <color name="widget_on_surface_variant">#94A3B8</color>
-    <color name="widget_on_surface_low">#CBD5E1</color>
+    <color name="widget_surface">#F1F5F9</color>
+    <color name="widget_surface_high">#E2E8F0</color>
+    <color name="widget_surface_stroke">#CBD5E1</color>
+    <color name="widget_primary">#2563EB</color>
+    <color name="widget_primary_container">#DBEAFE</color>
+    <color name="widget_on_primary_container">#1E3A8A</color>
+    <color name="widget_on_surface">#0F172A</color>
+    <color name="widget_on_surface_variant">#475569</color>
+    <color name="widget_on_surface_low">#64748B</color>
 </resources>

@@ -30,6 +30,8 @@ val WidgetGreenLight = Color(0xFF065F46)
 val WidgetGreenDark = Color(0xFF6EE7B7)
 val WidgetPurpleLight = Color(0xFF6D28D9)
 val WidgetPurpleDark = Color(0xFFC4B5FD)
+val WidgetAmberLight = Color(0xFFB45309)
+val WidgetAmberDark = Color(0xFFFBBF24)
 
 // Semantic WCAG AA-Compliant Holiday/Friday Color Tokens
 val LightHolidayText = Color(0xFFB3261E)

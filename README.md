@@ -7,7 +7,7 @@
 <img src="docs/branding/gahshomar-app-icon.png" alt="لوگوی گاه‌شمار خورشیدی" width="112" height="112" />
 
 ![Platform](https://img.shields.io/badge/Platform-Android%20(API%2026%2B)-2563EB?style=for-the-badge&logo=android&logoColor=white)
-![Kotlin](https://img.shields.io/badge/Kotlin-2.2.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF?style=for-the-badge&logo=kotlin&logoColor=white)
 ![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-Material%203-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white)
 ![License](https://img.shields.io/badge/License-All%20Rights%20Reserved%20(Contribution--Only)-DC2626?style=for-the-badge)
 

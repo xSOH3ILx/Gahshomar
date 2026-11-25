@@ -17,45 +17,81 @@ import androidx.core.content.res.ResourcesCompat
 internal object WidgetDateRenderers {
     fun compact(context: Context, id: Int, data: WidgetSnapshot, size: SizeF, options: WidgetOptions): RemoteViews {
         val colors = WidgetSurface.palette(context, options)
+        val occasionsToday = data.occasions(data.today)
+        val isHolidayToday = data.today.dayOfWeek == 7 || occasionsToday.any { it.isHoliday }
+        val pillBg = if (isHolidayToday) colors.holidayContainer else colors.accentContainer
+        val pillInk = if (isHolidayToday) colors.onHolidayContainer else colors.onAccentContainer
+        val todayCount = if (options.showReminders) data.occurrences(data.today, 1).count { it.epochMillis >= data.now } else 0
+
         return RemoteViews(context.packageName, R.layout.widget_calendar_compact).apply {
             WidgetSurface.apply(context, this, size, options)
-            WidgetSurface.text(this, R.id.compact_day_of_week, data.today.dayOfWeekNameFa, colors.secondary, 11f, options)
-            WidgetSurface.text(this, R.id.compact_day_number, data.today.day.toPersianDigits(), colors.accent, if (size.height < 110) 26f else 34f, options)
-            WidgetSurface.text(this, R.id.compact_month_name, data.today.monthNameFa, colors.text, 11f, options)
-            setViewVisibility(R.id.compact_day_of_week, if (size.height >= 125) View.VISIBLE else View.GONE)
-            setViewVisibility(R.id.compact_month_name, if (size.height >= 100) View.VISIBLE else View.GONE)
-            setContentDescription(R.id.compact_widget_root, WidgetSurface.fullDate(data.today))
+            WidgetSurface.tint(this, R.id.compact_pill_bg, pillBg)
+            WidgetSurface.text(this, R.id.compact_day_of_week, data.today.dayOfWeekNameFa, pillInk, 11f, options)
+            WidgetSurface.text(this, R.id.compact_day_number, data.today.day.toPersianDigits(), pillInk, if (size.height < 110) 24f else 32f, options)
+            WidgetSurface.text(this, R.id.compact_month_name, data.today.monthNameFa, pillInk, 11f, options)
+            setViewVisibility(R.id.compact_day_of_week, if (size.height >= 110) View.VISIBLE else View.GONE)
+            setViewVisibility(R.id.compact_month_name, if (size.height >= 96) View.VISIBLE else View.GONE)
+            if (todayCount > 0 && size.height >= 132) {
+                WidgetSurface.text(this, R.id.compact_reminder_badge, "${todayCount.toPersianDigits()} یادآور", pillInk, 9f, options)
+                setViewVisibility(R.id.compact_reminder_badge, View.VISIBLE)
+            } else {
+                setViewVisibility(R.id.compact_reminder_badge, View.GONE)
+            }
+            setContentDescription(R.id.compact_widget_root, description(data.today, data.today, isHolidayToday, todayCount))
             setOnClickPendingIntent(R.id.compact_widget_root, WidgetNavigation.pending(context, id, WidgetDestination(data.today)))
         }
     }
 
     fun daily(context: Context, id: Int, data: WidgetSnapshot, size: SizeF, options: WidgetOptions): RemoteViews {
         val colors = WidgetSurface.palette(context, options)
+        val occasionsToday = data.occasions(data.today)
+        val isHolidayToday = data.today.dayOfWeek == 7 || occasionsToday.any { it.isHoliday }
+        val heroBg = if (isHolidayToday) colors.holidayContainer else colors.accentContainer
+        val heroInk = if (isHolidayToday) colors.onHolidayContainer else colors.onAccentContainer
+
         return RemoteViews(context.packageName, R.layout.widget_calendar_m3).apply {
             WidgetSurface.apply(context, this, size, options)
-            WidgetSurface.text(this, R.id.widget_day_number, data.today.day.toPersianDigits(), colors.accent, if (size.height < 130) 26f else 34f, options)
-            WidgetSurface.text(this, R.id.widget_day_of_week, data.today.dayOfWeekNameFa, colors.secondary, 11f, options)
-            WidgetSurface.text(this, R.id.widget_month_name, data.today.monthNameFa, colors.text, 12f, options)
-            setViewVisibility(R.id.widget_day_of_week, if (size.height >= 170) View.VISIBLE else View.GONE)
-            setViewVisibility(R.id.widget_month_name, if (size.height >= 130) View.VISIBLE else View.GONE)
+            WidgetSurface.tint(this, R.id.daily_hero_bg, heroBg)
+            WidgetSurface.tint(this, R.id.daily_details_bg, colors.surfaceContainerHigh)
+            WidgetSurface.text(this, R.id.widget_day_number, data.today.day.toPersianDigits(), heroInk, if (size.height < 120) 26f else 34f, options)
+            WidgetSurface.text(this, R.id.widget_day_of_week, data.today.dayOfWeekNameFa, heroInk, 11f, options)
+            WidgetSurface.text(this, R.id.widget_month_name, data.today.monthNameFa, heroInk, 12f, options)
+            setViewVisibility(R.id.widget_day_of_week, if (size.height >= 120) View.VISIBLE else View.GONE)
+            setViewVisibility(R.id.widget_month_name, if (size.height >= 100) View.VISIBLE else View.GONE)
             WidgetSurface.text(this, R.id.widget_year_title, "${data.today.year.toPersianDigits()} خورشیدی", colors.text, 14f, options)
+
+            val showQuickAdd = size.width >= 265f
+            setViewVisibility(R.id.daily_add_container, if (showQuickAdd) View.VISIBLE else View.GONE)
+            if (showQuickAdd) {
+                WidgetSurface.tint(this, R.id.daily_add_bg, colors.surfaceContainerHighest)
+                WidgetSurface.tint(this, R.id.widget_add, colors.accent)
+                setOnClickPendingIntent(R.id.widget_add, WidgetNavigation.pending(context, id, WidgetDestination(data.today, add = true)))
+            }
+
             val dates = buildList {
                 if (options.showGregorian) add(DateConverter.getGregorianFormattedFa(data.today).toPersianDigits())
                 if (options.showHijri) add(DateConverter.getHijriFormatted(data.today).toPersianDigits())
             }.joinToString(" · ")
             WidgetSurface.text(this, R.id.widget_other_dates, dates, colors.secondary, 11f, options)
-            setViewVisibility(R.id.widget_other_dates, if (dates.isNotEmpty() && size.height >= 150) View.VISIBLE else View.GONE)
-            val occasions = data.occasions(data.today).joinToString("، ") { it.titleFa }
+            setViewVisibility(R.id.widget_other_dates, if (dates.isNotEmpty() && size.height >= 120) View.VISIBLE else View.GONE)
+
+            val occasions = occasionsToday.joinToString("، ") { it.titleFa }
             val incompleteLunar = !IranianHolidays.hasOfficialLunarHolidays(data.today.year)
-            val occasionText = if (incompleteLunar) listOf(occasions, "تعطیلات قمری این سال کامل نیست").filter { it.isNotEmpty() }.joinToString("؛ ") else occasions.ifEmpty { "امروز مناسبتی ثبت نشده" }
-            WidgetSurface.text(this, R.id.widget_occasion, occasionText, colors.secondary, 11f, options)
-            setViewVisibility(R.id.widget_occasion, if (options.showOccasions && size.height >= 180) View.VISIBLE else View.GONE)
+            val occasionText = if (incompleteLunar) {
+                listOf(occasions, "تعطیلات قمری این سال کامل نیست").filter { it.isNotEmpty() }.joinToString("؛ ")
+            } else {
+                occasions.ifEmpty { "امروز مناسبتی ثبت نشده" }
+            }
+            val occasionColor = if (isHolidayToday) colors.holiday else colors.secondary
+            WidgetSurface.text(this, R.id.widget_occasion, occasionText, occasionColor, 11f, options)
+            setViewVisibility(R.id.widget_occasion, if (options.showOccasions && size.height >= 135) View.VISIBLE else View.GONE)
+
             val next = data.nextToday()
             val summary = next?.let {
                 val title = if (options.hideTitles) "یادآور بعدی" else it.reminder.title
                 "$title، ساعت ${time(it.reminder.hour, it.reminder.minute)}"
             } ?: "یادآور دیگری برای امروز ندارید"
-            WidgetSurface.text(this, R.id.widget_reminders_summary, summary, colors.text, 12f, options)
+            WidgetSurface.text(this, R.id.widget_reminders_summary, summary, colors.text, 11.5f, options)
             setViewVisibility(R.id.widget_reminders_summary, if (options.showReminders) View.VISIBLE else View.GONE)
             setContentDescription(R.id.widget_root, WidgetSurface.fullDate(data.today) + if (options.showReminders) "، $summary" else "")
             setOnClickPendingIntent(R.id.widget_root, WidgetNavigation.pending(context, id, WidgetDestination(data.today)))
@@ -64,33 +100,56 @@ internal object WidgetDateRenderers {
 
     fun month(context: Context, id: Int, data: WidgetSnapshot, size: SizeF, options: WidgetOptions): RemoteViews {
         val month = options.monthJdn?.let(JalaliDate::fromJdn) ?: data.today
+        val isCurrentMonth = month.year == data.today.year && month.month == data.today.month
         val first = JalaliDate(month.year, month.month, 1)
         val colors = WidgetSurface.palette(context, options)
         val counts = if (options.showReminders) data.occurrences(first, first.daysInMonth).groupingBy { it.date }.eachCount() else emptyMap()
         val rows = (first.dayOfWeek - 1 + first.daysInMonth + 6) / 7
         val warning = !IranianHolidays.hasOfficialLunarHolidays(first.year)
-        val gridHeight = size.height - 76 - if (warning) 16 else 0
+        val gridHeight = size.height - 80 - if (warning) 16 else 0
         val interactive = size.width - 20 >= 7 * 48 && gridHeight >= rows * 48
+        val titleText = if (isCurrentMonth) {
+            "${month.monthNameFa} ${month.year.toPersianDigits()}"
+        } else {
+            "${month.monthNameFa} ${month.year.toPersianDigits()} · امروز"
+        }
+
         return RemoteViews(context.packageName, R.layout.widget_calendar_month).apply {
             WidgetSurface.apply(context, this, size, options)
-            WidgetSurface.text(this, R.id.month_warning, "تعطیلات قمری این سال کامل نیست", colors.secondary, 10f, options)
-            setTextViewTextSize(R.id.month_warning, TypedValue.COMPLEX_UNIT_SP,
-                WidgetSurface.fitText(context, "تعطیلات قمری این سال کامل نیست", size.width - 20, 16f, 10f * options.textScale))
+            WidgetSurface.text(this, R.id.month_warning, "تعطیلات قمری این سال کامل نیست", colors.holiday, 10f, options)
+            setTextViewTextSize(
+                R.id.month_warning,
+                TypedValue.COMPLEX_UNIT_SP,
+                WidgetSurface.fitText(context, "تعطیلات قمری این سال کامل نیست", size.width - 20, 16f, 10f * options.textScale),
+            )
             setViewVisibility(R.id.month_warning, if (warning) View.VISIBLE else View.GONE)
-            WidgetSurface.text(this, R.id.month_title, "${month.monthNameFa} ${month.year.toPersianDigits()}", colors.text, 13f, options)
-            setTextViewTextSize(R.id.month_title, TypedValue.COMPLEX_UNIT_SP,
-                WidgetSurface.fitText(context, "${month.monthNameFa} ${month.year.toPersianDigits()}", size.width - 164, 48f, 13f * options.textScale))
+
+            if (isCurrentMonth) {
+                setViewVisibility(R.id.month_title_bg, View.GONE)
+                WidgetSurface.text(this, R.id.month_title, titleText, colors.text, 13f, options)
+            } else {
+                setViewVisibility(R.id.month_title_bg, View.VISIBLE)
+                WidgetSurface.tint(this, R.id.month_title_bg, colors.accentContainer)
+                WidgetSurface.text(this, R.id.month_title, titleText, colors.onAccentContainer, 12.5f, options)
+            }
+            setTextViewTextSize(
+                R.id.month_title,
+                TypedValue.COMPLEX_UNIT_SP,
+                WidgetSurface.fitText(context, titleText, size.width - 172, 36f, 13f * options.textScale),
+            )
             setOnClickPendingIntent(R.id.month_widget_root, WidgetNavigation.pending(context, id, WidgetDestination(first)))
-            WidgetSurface.configure(context, this, id, colors)
+            WidgetSurface.configure(context, this, id, colors, bgViewId = R.id.widget_configure_bg)
+            WidgetSurface.tint(this, R.id.month_previous_bg, colors.surfaceContainerHigh)
+            WidgetSurface.tint(this, R.id.month_next_bg, colors.surfaceContainerHigh)
+            WidgetSurface.tint(this, R.id.month_previous, colors.accent)
+            WidgetSurface.tint(this, R.id.month_next, colors.accent)
             setOnClickPendingIntent(R.id.month_previous, WidgetProvider.monthAction(context, id, -1))
             setOnClickPendingIntent(R.id.month_next, WidgetProvider.monthAction(context, id, 1))
             setOnClickPendingIntent(R.id.month_title, WidgetProvider.monthAction(context, id, 0))
-            setInt(R.id.month_previous, "setColorFilter", colors.accent)
-            setInt(R.id.month_next, "setColorFilter", colors.accent)
             for (index in 0..6) {
                 setTextColor(WidgetViewIds.weekdays[index], if (index == 6) colors.holiday else colors.secondary)
             }
-            val holidayToday = data.today.month == month.month && data.today.day <= first.daysInMonth
+            val holidayToday = data.today.month == month.month && data.today.year == month.year && data.today.day <= first.daysInMonth
             val density = context.resources.displayMetrics.density
             val bitmap = MonthGridPainter.render(
                 context = context,
@@ -111,9 +170,6 @@ internal object WidgetDateRenderers {
                 textScale = options.textScale,
             )
             setImageViewBitmap(R.id.month_grid_canvas, bitmap)
-            // Per-day touch routing: a transparent 7xN grid of click targets laid
-            // over the canvas bitmap, each opening its own day in the app. The grid
-            // is RTL (column 0 = right-most), matching MonthGridPainter's layout.
             for (row in 0 until rows) setViewVisibility(WidgetViewIds.monthRows[row], if (interactive) View.VISIBLE else View.GONE)
             if (interactive) {
                 for (row in 0 until rows) for (column in 0..6) {
@@ -136,20 +192,31 @@ internal object WidgetDateRenderers {
     fun week(context: Context, id: Int, data: WidgetSnapshot, size: SizeF, options: WidgetOptions): RemoteViews {
         val colors = WidgetSurface.palette(context, options)
         val first = CalendarOccurrences.weekStart(data.today)
+        val last = first.plusDays(6)
         val counts = if (options.showReminders) data.occurrences(first, 7).groupingBy { it.date }.eachCount() else emptyMap()
         val warning = (0..6).any { !IranianHolidays.hasOfficialLunarHolidays(first.plusDays(it.toLong()).year) }
         val weekdayRowHeight = 22
-        val gridHeight = size.height - 56 - weekdayRowHeight - if (warning) 16 else 0
+        val gridHeight = size.height - 60 - weekdayRowHeight - if (warning) 16 else 0
         val interactive = size.width - 20 >= 7 * 48 && gridHeight >= 48
+        val weekLabel = if (first.month == last.month) {
+            "هفتهٔ ${first.day.toPersianDigits()} تا ${last.day.toPersianDigits()} ${last.monthNameFa}"
+        } else {
+            "هفتهٔ ${first.monthNameFa} - ${last.monthNameFa}"
+        }
+
         return RemoteViews(context.packageName, R.layout.widget_calendar_week).apply {
             WidgetSurface.apply(context, this, size, options)
-            WidgetSurface.text(this, R.id.week_warning, "تعطیلات قمری این هفته کامل نیست", colors.secondary, 10f, options)
-            setTextViewTextSize(R.id.week_warning, TypedValue.COMPLEX_UNIT_SP,
-                WidgetSurface.fitText(context, "تعطیلات قمری این هفته کامل نیست", size.width - 20, 16f, 10f * options.textScale))
+            WidgetSurface.text(this, R.id.week_warning, "تعطیلات قمری این هفته کامل نیست", colors.holiday, 10f, options)
+            setTextViewTextSize(
+                R.id.week_warning,
+                TypedValue.COMPLEX_UNIT_SP,
+                WidgetSurface.fitText(context, "تعطیلات قمری این هفته کامل نیست", size.width - 20, 16f, 10f * options.textScale),
+            )
             setViewVisibility(R.id.week_warning, if (warning) View.VISIBLE else View.GONE)
-            WidgetSurface.text(this, R.id.week_title, "هفتهٔ ${data.today.monthNameFa}", colors.text, 13f, options)
-            WidgetSurface.configure(context, this, id, colors)
-            setInt(R.id.widget_add, "setColorFilter", colors.accent)
+            WidgetSurface.text(this, R.id.week_title, weekLabel, colors.text, 13.5f, options)
+            WidgetSurface.configure(context, this, id, colors, bgViewId = R.id.widget_configure_bg)
+            WidgetSurface.tint(this, R.id.week_add_bg, colors.surfaceContainerHigh)
+            WidgetSurface.tint(this, R.id.widget_add, colors.accent)
             setOnClickPendingIntent(R.id.widget_add, WidgetNavigation.pending(context, id, WidgetDestination(data.today, add = true)))
             setOnClickPendingIntent(R.id.week_widget_root, WidgetNavigation.pending(context, id, WidgetDestination(data.today)))
             for (index in 0..6) {
@@ -175,9 +242,6 @@ internal object WidgetDateRenderers {
                 textScale = options.textScale,
             )
             setImageViewBitmap(WidgetViewIds.weekGridCanvas, bitmap)
-            // Per-day touch routing: transparent click targets over the canvas
-            // bitmap, each opening its own day in the app. The row is RTL
-            // (column 0 = right-most), matching MonthGridPainter's layout.
             setViewVisibility(R.id.week_cells, if (interactive) View.VISIBLE else View.GONE)
             if (interactive) {
                 WidgetViewIds.weekCells.forEachIndexed { index, overlay ->

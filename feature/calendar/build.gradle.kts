@@ -2,13 +2,13 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
 android {
     namespace = "com.soh3il.feature.calendar"
-    compileSdk = 35
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
         minSdk = 26

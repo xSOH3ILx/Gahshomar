@@ -188,4 +188,41 @@ class WidgetRenderingLocalTest {
         }
     }
 
+    @Test fun agendaCountdownPillAppearsWhenShowCountdownEnabled() {
+        val future = date.plusDays(2)
+        val counted = Reminder(
+            id = 7,
+            title = "رویداد شمارش",
+            jalaliYear = future.year,
+            jalaliMonth = future.month,
+            jalaliDay = future.day,
+            hour = 15,
+            minute = 0,
+            showCountdown = true,
+        )
+        val plain = counted.copy(id = 8, title = "عادی", showCountdown = false)
+        val snapshot = WidgetSnapshot(date.toEpochMillis(10), listOf(counted, plain))
+        val rows = WidgetAgendaRenderer.rows(snapshot, WidgetOptions(showOccasions = false))
+        assertEquals(2, rows.size)
+        assertNotNull(rows[0].countdownLabel)
+        assertNull(rows[1].countdownLabel)
+
+        val countedView = WidgetAgendaRenderer.row(context(), rows[0], WidgetOptions()).apply(context(), FrameLayout(context()))
+        val plainView = WidgetAgendaRenderer.row(context(), rows[1], WidgetOptions()).apply(context(), FrameLayout(context()))
+        assertEquals(View.VISIBLE, countedView.findViewById<View>(R.id.agenda_countdown_container).visibility)
+        assertEquals(View.GONE, plainView.findViewById<View>(R.id.agenda_countdown_container).visibility)
+    }
+
+    @Test fun compactWidgetRespectsReminderBadgeToggleAndPrivacy() {
+        val future = Reminder(1, "عنوان محرمانه", jalaliYear = date.year, jalaliMonth = date.month, jalaliDay = date.day, hour = 14, minute = 0)
+        val shown = render(WidgetKind.COMPACT, 110, 145, 1f, WidgetOptions(showReminders = true, hideTitles = true), listOf(future))
+        val badge = shown.findViewById<TextView>(R.id.compact_reminder_badge)
+        assertEquals(View.VISIBLE, badge.visibility)
+        assertFalse(badge.text.toString().contains("عنوان محرمانه"))
+        assertFalse(shown.contentDescription.toString().contains("عنوان محرمانه"))
+
+        val hidden = render(WidgetKind.COMPACT, 110, 145, 1f, WidgetOptions(showReminders = false), listOf(future))
+        assertEquals(View.GONE, hidden.findViewById<View>(R.id.compact_reminder_badge).visibility)
+    }
+
 }

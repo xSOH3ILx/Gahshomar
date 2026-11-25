@@ -24,10 +24,6 @@ internal class MonthGridPainter private constructor(    private val cellWidth: F
     private val typeface: Typeface,
 ) {
     private val circleFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
-    private val circleStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeWidth = min(cellWidth, cellHeight) * .06f
-    }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = this@MonthGridPainter.typeface }
 
@@ -66,20 +62,20 @@ internal class MonthGridPainter private constructor(    private val cellWidth: F
     }
 
     private fun drawCell(canvas: Canvas, cell: MonthCell, textScale: Float) {
+        if (cell.day <= 0) return
         val cx = cellWidth / 2f
         val cy = cellHeight / 2f
         val radius = min(cellWidth, cellHeight) / 2f - min(cellWidth, cellHeight) * .09f
 
-        if (cell.isHoliday && !cell.isToday) {
-            circleFill.color = withAlpha(colors.holiday, 36)
-            canvas.drawCircle(cx, cy, radius, circleFill)
-        }
         if (cell.isToday) {
             circleFill.color = colors.accent
             canvas.drawCircle(cx, cy, radius, circleFill)
+        } else if (cell.isHoliday) {
+            circleFill.color = withAlpha(colors.holidayContainer, if (colors.isDark) 150 else 190)
+            canvas.drawCircle(cx, cy, radius, circleFill)
         } else if (cell.hasReminder) {
-            circleStroke.color = withAlpha(colors.secondary, 90)
-            canvas.drawCircle(cx, cy, radius, circleStroke)
+            circleFill.color = withAlpha(colors.accentContainer, if (colors.isDark) 110 else 140)
+            canvas.drawCircle(cx, cy, radius, circleFill)
         }
 
         val number = cell.day.toPersianDigits()
@@ -88,15 +84,15 @@ internal class MonthGridPainter private constructor(    private val cellWidth: F
             cell.isHoliday -> colors.holiday
             else -> colors.text
         }
-        textPaint.textSize = min(cellWidth, cellHeight) * .48f * textScale
+        textPaint.textSize = min(cellWidth, cellHeight) * .46f * textScale
         val metrics = textPaint.fontMetrics
         val textWidth = textPaint.measureText(number)
         canvas.drawText(number, cx - textWidth / 2f, cy - (metrics.ascent + metrics.descent) / 2f, textPaint)
 
-        if (cell.hasReminder && !cell.isToday) {
-            dotPaint.color = colors.accent
-            val dotRadius = min(cellWidth, cellHeight) * .055f
-            canvas.drawCircle(cx, cy + radius * .82f, dotRadius, dotPaint)
+        if (cell.hasReminder) {
+            dotPaint.color = if (cell.isToday) colors.onAccent else colors.accent
+            val dotRadius = min(cellWidth, cellHeight) * .07f
+            canvas.drawCircle(cx, cy + radius * .72f, dotRadius, dotPaint)
         }
     }
 }

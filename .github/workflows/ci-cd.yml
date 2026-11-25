@@ -1,0 +1,181 @@
+name: Gahshomar CI/CD
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_release:
+        description: "Build signed release APKs artifact (without publishing a tag release)"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+
+jobs:
+  verify:
+    name: Tests, Lint and Debug Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x ./gradlew
+
+      - name: Run Jalali Tests, Unit Tests, Lint and Debug Build
+        run: ./gradlew :core:jalali:test testDebugUnitTest lintDebug assembleDebug --stacktrace
+
+      - name: Upload Lint Reports on Failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lint-reports
+          path: "**/build/reports/lint-results-*.html"
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Debug APKs on Main Push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v7
+        with:
+          name: Gahshomar-Debug-APKs
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release:
+    name: Build Signed APKs & Publish Release
+    needs: verify
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_release)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x ./gradlew
+
+      - name: Validate Tag Matches version.properties
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          MAJOR=$(grep '^VERSION_MAJOR' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          MINOR=$(grep '^VERSION_MINOR' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          PATCH=$(grep '^VERSION_PATCH' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          PROP_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          echo "APP_VERSION=${PROP_VERSION}" >> "$GITHUB_ENV"
+          if [ "$TAG_VERSION" != "$PROP_VERSION" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match version.properties ($PROP_VERSION)" >&2
+            exit 1
+          fi
+
+      - name: Resolve Version for Manual Dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          MAJOR=$(grep '^VERSION_MAJOR' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          MINOR=$(grep '^VERSION_MINOR' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          PATCH=$(grep '^VERSION_PATCH' version.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          echo "APP_VERSION=${MAJOR}.${MINOR}.${PATCH}" >> "$GITHUB_ENV"
+
+      - name: Validate & Decode Release Keystore
+        run: |
+          if [ -z "${RELEASE_KEYSTORE_BASE64:-}" ] || [ -z "${KEYSTORE_PASSWORD:-}" ] || [ -z "${KEY_ALIAS:-}" ] || [ -z "${KEY_PASSWORD:-}" ]; then
+            echo "Missing release signing GitHub secrets." >&2
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/keystore"
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/keystore/release.jks"
+          echo "KEYSTORE_FILE=$RUNNER_TEMP/keystore/release.jks" >> "$GITHUB_ENV"
+
+      - name: Build Signed Release APKs
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Shred Temporary Keystore
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/keystore/release.jks" ]; then
+            shred -u "$RUNNER_TEMP/keystore/release.jks"
+          fi
+
+      - name: Package Release APKs & Checksums
+        run: |
+          mkdir -p release-apks
+          for apk in app/build/outputs/apk/release/*.apk; do
+            [ -f "$apk" ] || continue
+            filename=$(basename "$apk")
+            if [[ "$filename" == *"arm64-v8a"* ]]; then
+              cp "$apk" "release-apks/Gahshomar-v${APP_VERSION}-arm64-v8a.apk"
+            elif [[ "$filename" == *"armeabi-v7a"* ]]; then
+              cp "$apk" "release-apks/Gahshomar-v${APP_VERSION}-armeabi-v7a.apk"
+            elif [[ "$filename" == *"x86_64"* ]]; then
+              cp "$apk" "release-apks/Gahshomar-v${APP_VERSION}-x86_64.apk"
+            elif [[ "$filename" == *"universal"* ]]; then
+              cp "$apk" "release-apks/Gahshomar-v${APP_VERSION}-universal.apk"
+            else
+              echo "Unrecognized release APK artifact: $filename" >&2
+              exit 1
+            fi
+          done
+          (cd release-apks && sha256sum *.apk > SHA256SUMS.txt)
+          ls -lh release-apks/
+
+      - name: Upload Signed Release APKs Artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: Gahshomar-v${{ env.APP_VERSION }}-APKs
+          path: release-apks/*
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          name: Gahshomar v${{ env.APP_VERSION }}
+          files: release-apks/*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

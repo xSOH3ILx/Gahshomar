@@ -10,7 +10,7 @@ enum class WidgetKind(val title: String, val provider: String, val defaultSize: 
     DAILY("کارت تاریخ", "CalendarAppWidgetProvider", SizeF(250f, 140f)),
     MONTH("تقویم ماهانه", "MonthCalendarWidgetProvider", SizeF(250f, 180f)),
     WEEK("نمای هفته", "WeekCalendarWidgetProvider", SizeF(250f, 140f)),
-    AGENDA("دستور کار", "AgendaCalendarWidgetProvider", SizeF(250f, 260f));
+    AGENDA("رویدادها", "AgendaCalendarWidgetProvider", SizeF(250f, 260f));
 
     fun component(context: Context) = ComponentName(context.packageName, "com.soh3il.calendar.widget.$provider")
 

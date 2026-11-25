@@ -3,7 +3,6 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -47,7 +46,8 @@ val computedVersionName = "$vMajor.$vMinor.$vPatch"
 
 android {
     namespace = "com.soh3il.calendar"
-    compileSdk = 35
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
         applicationId = "com.soh3il.calendar"

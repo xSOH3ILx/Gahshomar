@@ -39,8 +39,8 @@ class CalendarExportTest {
             if (uri == CalendarContract.Events.CONTENT_URI) eventQueryArgs = args?.toList().orEmpty()
             return MatrixCursor(projection).apply {
                 if (uri == CalendarContract.Calendars.CONTENT_URI) addRow(arrayOf<Any>(7L, CalendarContract.Calendars.CAL_ACCESS_OWNER))
-                if (uri == CalendarContract.Events.CONTENT_URI && existingEventId != null) addRow(arrayOf(existingEventId, existingDescription))
-                if (uri == CalendarContract.Events.CONTENT_URI && secondEventId != null) addRow(arrayOf(secondEventId, existingDescription))
+                if (uri == CalendarContract.Events.CONTENT_URI && existingEventId != null) addRow(arrayOf<Any?>(existingEventId, existingDescription))
+                if (uri == CalendarContract.Events.CONTENT_URI && secondEventId != null) addRow(arrayOf<Any?>(secondEventId, existingDescription))
             }
         }
         override fun insert(uri: Uri, values: ContentValues?): Uri? {

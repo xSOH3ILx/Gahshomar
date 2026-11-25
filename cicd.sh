@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Gahshomar local CI/CD pipeline (replaces .github/workflows/build-and-release.yml)
+# Gahshomar local CI/CD pipeline (mirrors .github/workflows/ci-cd.yml)
 #
 # Usage:
 #   ./cicd.sh              # full pipeline: test -> lint -> debug build -> package

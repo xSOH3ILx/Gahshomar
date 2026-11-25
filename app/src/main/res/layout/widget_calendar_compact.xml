@@ -1,41 +1,86 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/compact_widget_root" android:layout_width="match_parent" android:layout_height="match_parent" android:layoutDirection="rtl">
-    <ImageView android:id="@+id/widget_background" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:src="@drawable/widget_bg" android:importantForAccessibility="no" android:contentDescription="@null" />
-    <LinearLayout
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/compact_widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layoutDirection="rtl"
-    android:gravity="center"
-    android:orientation="vertical"
-    android:padding="8dp">
+    android:layoutDirection="rtl">
 
-    <TextView
-        android:id="@+id/compact_day_of_week"
-        android:text="@string/widget_today"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/vazirmatn_medium"
-        android:textColor="@color/widget_primary"
-        android:textSize="11sp"
-        android:textStyle="bold" />
+    <ImageView
+        android:id="@+id/widget_background"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_bg" />
 
-    <TextView
-        android:id="@+id/compact_day_number"
-        android:text="@string/widget_sample_day"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/vazirmatn_bold"
-        android:textColor="@color/dynamic_icon_digit"
-        android:textSize="34sp"
-        android:textStyle="bold" />
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="8dp">
 
-    <TextView
-        android:id="@+id/compact_month_name"
-        android:text="@string/widget_sample_month"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="@font/vazirmatn_regular"
-        android:textColor="@color/widget_on_surface_variant"
-        android:textSize="11sp" />
-</LinearLayout>
+        <ImageView
+            android:id="@+id/compact_pill_bg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_card_inner_bg"
+            android:tint="@color/widget_primary_container" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:layoutDirection="rtl"
+            android:orientation="vertical"
+            android:paddingHorizontal="6dp"
+            android:paddingVertical="6dp">
+
+            <TextView
+                android:id="@+id/compact_day_of_week"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/vazirmatn_medium"
+                android:maxLines="1"
+                android:text="@string/widget_today"
+                android:textColor="@color/widget_on_primary_container"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/compact_day_number"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/vazirmatn_bold"
+                android:includeFontPadding="false"
+                android:text="@string/widget_sample_day"
+                android:textColor="@color/widget_on_primary_container"
+                android:textSize="32sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/compact_month_name"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="@font/vazirmatn_bold"
+                android:maxLines="1"
+                android:text="@string/widget_sample_month"
+                android:textColor="@color/widget_on_primary_container"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/compact_reminder_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/vazirmatn_medium"
+                android:maxLines="1"
+                android:textSize="9sp"
+                android:visibility="gone" />
+        </LinearLayout>
+    </FrameLayout>
 </FrameLayout>

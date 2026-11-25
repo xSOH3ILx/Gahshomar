@@ -2,12 +2,12 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
 }
 
 android {
     namespace = "com.soh3il.core.scheduler"
-    compileSdk = 35
+    compileSdk = 37
+    compileSdkMinor = 2
 
     defaultConfig {
         minSdk = 26

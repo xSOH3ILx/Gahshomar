@@ -1,4 +1,91 @@
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/agenda_row" android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="64dp" android:paddingHorizontal="8dp" android:paddingVertical="8dp" android:orientation="vertical" android:layoutDirection="rtl" android:background="@drawable/widget_action_bg">
-    <TextView android:id="@+id/agenda_date" style="@style/WidgetLabel" android:fontFamily="@font/vazirmatn_medium" />
-    <TextView android:id="@+id/agenda_text" style="@style/WidgetLabel" android:maxLines="2" android:textDirection="rtl" android:gravity="start" />
-</LinearLayout>
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/agenda_row"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:foreground="@drawable/widget_row_ripple"
+    android:layoutDirection="rtl">
+
+    <ImageView
+        android:id="@+id/agenda_row_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY"
+        android:src="@drawable/widget_card_inner_bg"
+        android:tint="@color/widget_surface_high" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:layoutDirection="rtl"
+        android:minHeight="56dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="10dp"
+        android:paddingVertical="8dp">
+
+        <ImageView
+            android:id="@+id/agenda_indicator"
+            android:layout_width="4dp"
+            android:layout_height="30dp"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no"
+            android:scaleType="fitXY"
+            android:src="@drawable/widget_pill_bg"
+            android:tint="@color/widget_primary" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/agenda_date"
+                style="@style/WidgetLabel"
+                android:fontFamily="@font/vazirmatn_medium"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/agenda_text"
+                style="@style/WidgetLabel"
+                android:fontFamily="@font/vazirmatn_bold"
+                android:gravity="start"
+                android:maxLines="2"
+                android:textDirection="rtl"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <FrameLayout
+            android:id="@+id/agenda_countdown_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/agenda_countdown_bg"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:importantForAccessibility="no"
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_pill_bg"
+                android:tint="@color/widget_primary_container" />
+
+            <TextView
+                android:id="@+id/agenda_countdown_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/vazirmatn_bold"
+                android:maxLines="1"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="3dp"
+                android:textColor="@color/widget_on_primary_container"
+                android:textSize="10sp" />
+        </FrameLayout>
+    </LinearLayout>
+</FrameLayout>

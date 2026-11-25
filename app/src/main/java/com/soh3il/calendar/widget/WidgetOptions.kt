@@ -5,7 +5,7 @@ import com.soh3il.core.jalali.JalaliDate
 import org.json.JSONObject
 
 enum class WidgetTheme { SYSTEM, LIGHT, DARK }
-enum class WidgetAccent { BLUE, GREEN, PURPLE }
+enum class WidgetAccent { BLUE, GREEN, PURPLE, AMBER }
 
 data class WidgetOptions(
     val theme: WidgetTheme = WidgetTheme.SYSTEM,
