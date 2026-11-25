@@ -20,4 +20,10 @@ class UpdateUrlPolicyTest {
         assertFalse(UpdateUrlPolicy.isAllowed("https://githubusercontent.com.evil.example/release.apk"))
         assertFalse(UpdateUrlPolicy.isAllowed("https://github.com.evil.example/release.apk"))
     }
+
+    @Test
+    fun rejectsMalformedUrlsCleanly() {
+        assertFalse(UpdateUrlPolicy.isAllowed("not a valid url :// ???"))
+        assertFalse(UpdateUrlPolicy.isAllowed(""))
+    }
 }

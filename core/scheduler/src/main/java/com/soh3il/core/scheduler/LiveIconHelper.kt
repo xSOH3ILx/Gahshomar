@@ -86,8 +86,9 @@ object LiveIconHelper {
                     )
                 }
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             // Fail gracefully if launcher or package manager has transient issues
+            android.util.Log.w("LiveIconHelper", "live icon switch failed", e)
         }
     }
 

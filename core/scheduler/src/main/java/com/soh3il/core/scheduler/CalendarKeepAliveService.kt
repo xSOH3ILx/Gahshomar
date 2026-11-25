@@ -118,6 +118,7 @@ class CalendarKeepAliveService : Service() {
         try {
             unregisterReceiver(receiver)
         } catch (_: IllegalArgumentException) {
+            android.util.Log.w("CalendarKeepAliveService", "keep-alive receiver was not registered")
         }
         if (UserPreferences.isPersistentNotificationEnabled(applicationContext)) {
             PersistentNotificationHelper.restoreIfMissing(applicationContext)

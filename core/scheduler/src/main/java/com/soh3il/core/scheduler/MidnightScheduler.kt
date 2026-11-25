@@ -105,6 +105,7 @@ object MidnightScheduler {
                 alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
             }
         } catch (_: SecurityException) {
+            android.util.Log.w("MidnightScheduler", "exact alarm permission revoked; keep-alive watchdog uses inexact alarm")
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
     }

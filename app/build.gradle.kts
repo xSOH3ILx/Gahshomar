@@ -52,7 +52,7 @@ android {
     defaultConfig {
         applicationId = "com.soh3il.calendar"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = computedVersionCode
         versionName = computedVersionName
 

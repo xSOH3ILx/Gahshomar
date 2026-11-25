@@ -72,7 +72,8 @@ object IcsHelper {
             File(backupDir, "SOH3IL_backup_$stamp.ics").writeText(icsData, Charsets.UTF_8)
             backupDir.listFiles()?.sortedByDescending { it.name }?.drop(7)?.forEach { it.delete() }
             UserPreferences.setAutoBackupLastAt(context, now)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.w("IcsHelper", "auto backup failed", e)
         }
     }
 }

@@ -104,4 +104,22 @@ class IranianHolidaysTest {
         val sortedDays = days.sorted()
         assertEquals(sortedDays, days)
     }
+
+    @Test
+    fun testUpdatedCulturalAndAncientSolarOccasions() {
+        val azar = IranianHolidays.getOccasionsForMonth(1405, 9)
+        assertTrue(azar.any { it.jalaliDate == "1405-09-09" && !it.isHoliday && it.titleFa.contains("آذرگان") })
+
+        val tir = IranianHolidays.getOccasionsForMonth(1405, 4)
+        assertTrue(tir.any { it.jalaliDate == "1405-04-13" && !it.isHoliday && it.titleFa.contains("تیرگان") })
+
+        val bahman = IranianHolidays.getOccasionsForMonth(1405, 11)
+        assertTrue(bahman.any { it.jalaliDate == "1405-11-29" && !it.isHoliday && it.titleFa.contains("سپندارمذگان") })
+
+        // Last Tuesday of Esfand 1405 (1405-12-29 is Saturday -> last Tuesday is 1405-12-25)
+        val esfand = IranianHolidays.getOccasionsForMonth(1405, 12)
+        val chaharshanbeSuri = esfand.firstOrNull { it.titleFa.contains("چهارشنبه‌سوری") }
+        assertTrue(chaharshanbeSuri != null && !chaharshanbeSuri.isHoliday)
+        assertEquals("1405-12-25", chaharshanbeSuri!!.jalaliDate)
+    }
 }

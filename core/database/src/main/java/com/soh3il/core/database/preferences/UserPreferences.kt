@@ -28,7 +28,8 @@ object UserPreferences {
         val name = getPrefs(context).getString(KEY_THEME, AppTheme.SYSTEM.name)
         return try {
             AppTheme.valueOf(name ?: AppTheme.SYSTEM.name)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.w("UserPreferences", "unknown theme name '$name'; falling back to SYSTEM", e)
             AppTheme.SYSTEM
         }
     }

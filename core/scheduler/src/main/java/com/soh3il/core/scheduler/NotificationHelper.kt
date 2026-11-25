@@ -212,6 +212,7 @@ object NotificationHelper {
             notificationManager.notify(AlarmIdentity.notificationTag(reminderId, preOffsetMinutes), notificationId, builder.build())
             true
         } catch (_: SecurityException) {
+            android.util.Log.w("NotificationHelper", "notification permission missing; reminder notification dropped")
             false
         }
     }

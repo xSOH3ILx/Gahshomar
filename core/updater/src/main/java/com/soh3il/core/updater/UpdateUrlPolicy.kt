@@ -10,6 +10,7 @@ object UpdateUrlPolicy {
         val uri = try {
             URI(url)
         } catch (_: Exception) {
+            java.util.logging.Logger.getLogger("UpdateUrlPolicy").warning("unparsable update URL rejected")
             return false
         }
         if (!uri.scheme.equals("https", ignoreCase = true)) return false

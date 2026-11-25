@@ -215,7 +215,8 @@ object AlarmScheduler {
         } catch (_: SecurityException) {
             android.util.Log.w("AlarmScheduler", "exact alarm permission revoked; falling back to inexact alarm")
             alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.e("AlarmScheduler", "alarm schedule failed; falling back to inexact set()", e)
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
         }
     }

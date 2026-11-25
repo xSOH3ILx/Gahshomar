@@ -156,7 +156,7 @@ class WidgetRenderingLocalTest {
     }
     @Test fun missingLunarDataIsVisibleOnMonthAndWeek() {
         val context = context()
-        val future = JalaliDate(1407, 1, 2)
+        val future = JalaliDate(1408, 1, 2)
         val snapshot = WidgetSnapshot(future.toEpochMillis(10), emptyList())
         for ((kind, id) in listOf(WidgetKind.MONTH to R.id.month_warning, WidgetKind.WEEK to R.id.week_warning)) {
             val root = WidgetRenderer.render(context, kind, 123, snapshot, SizeF(400f, 300f), WidgetOptions())
@@ -168,7 +168,7 @@ class WidgetRenderingLocalTest {
     }
     @Test fun dailyWarningDoesNotDisappearWhenThereIsAnotherOccasion() {
         val context = context()
-        val date = JalaliDate(1407, 1, 1)
+        val date = JalaliDate(1408, 1, 1)
         val root = WidgetRenderer.render(context, WidgetKind.DAILY, 123, WidgetSnapshot(date.toEpochMillis(10), emptyList()), SizeF(400f, 300f), WidgetOptions()).apply(context, FrameLayout(context))
         val text = root.findViewById<TextView>(R.id.widget_occasion).text.toString()
         assertTrue(text.contains("قمری"))
@@ -177,7 +177,7 @@ class WidgetRenderingLocalTest {
 
     @Test fun lunarWarningFitsTheWidgetWithLargeText() {
         val context = context(1.5f)
-        val date = JalaliDate(1407, 1, 2)
+        val date = JalaliDate(1408, 1, 2)
         for ((kind, id) in listOf(WidgetKind.MONTH to R.id.month_warning, WidgetKind.WEEK to R.id.week_warning)) {
             val root = WidgetRenderer.render(context, kind, 123, WidgetSnapshot(date.toEpochMillis(10), emptyList()), SizeF(250f, 180f), WidgetOptions(textScale = 1.3f)).apply(context, FrameLayout(context))
             val density = context.resources.displayMetrics.density

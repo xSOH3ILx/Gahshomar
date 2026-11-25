@@ -15,6 +15,7 @@ class Soh3ilApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        LocalCrashReporter.install(this)
         com.soh3il.core.scheduler.DateStatusRecovery.install(this)
         com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(this)
         com.soh3il.core.scheduler.CalendarKeepAliveService.start(this)
