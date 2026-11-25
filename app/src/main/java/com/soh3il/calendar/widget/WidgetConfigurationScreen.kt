@@ -3,11 +3,13 @@ package com.soh3il.calendar.widget
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
 import android.os.Build
+import android.util.SizeF
 import android.view.MotionEvent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -18,6 +20,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
@@ -394,24 +397,40 @@ internal fun WidgetConfigurationScreen(
 internal fun WidgetPreview(kind: WidgetKind, options: WidgetOptions, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val data = remember { WidgetSnapshot.preview() }
-    AndroidView(
-        factory = {
-            object : AppWidgetHostView(it) {
-                override fun onInterceptTouchEvent(event: MotionEvent?) = true
-            }.apply {
-                val info = AppWidgetManager.getInstance(context).installedProviders.first { p ->
-                    p.provider == kind.component(context)
+    BoxWithConstraints(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        val previewWidthDp = if (kind == WidgetKind.COMPACT) {
+            minOf(maxWidth.value, 132f)
+        } else {
+            maxWidth.value.coerceAtLeast(kind.defaultSize.width)
+        }
+        val previewHeightDp = if (kind == WidgetKind.COMPACT) 132f else kind.defaultSize.height
+        val renderSize = remember(previewWidthDp, previewHeightDp) {
+            SizeF(previewWidthDp, previewHeightDp)
+        }
+        AndroidView(
+            factory = {
+                object : AppWidgetHostView(it) {
+                    override fun onInterceptTouchEvent(event: MotionEvent?) = true
+                }.apply {
+                    val info = AppWidgetManager.getInstance(context).installedProviders.first { p ->
+                        p.provider == kind.component(context)
+                    }
+                    setAppWidget(-1, info)
+                    setPadding(0, 0, 0, 0)
+                    importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+                    setOnTouchListener { _, _ -> true }
                 }
-                setAppWidget(-1, info)
-                setPadding(0, 0, 0, 0)
-                importantForAccessibility = android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
-                setOnTouchListener { _, _ -> true }
-            }
-        },
-        update = { frame ->
-            val preview = WidgetRenderer.render(context, kind, -1, data, kind.defaultSize, options)
-            frame.updateAppWidget(preview)
-        },
-        modifier = modifier.height(kind.defaultSize.height.dp),
-    )
+            },
+            update = { frame ->
+                val preview = WidgetRenderer.render(context, kind, -1, data, renderSize, options)
+                frame.updateAppWidget(preview)
+            },
+            modifier = Modifier
+                .width(previewWidthDp.dp)
+                .height(previewHeightDp.dp),
+        )
+    }
 }

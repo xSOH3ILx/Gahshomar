@@ -51,7 +51,7 @@
             <FrameLayout
                 android:layout_width="0dp"
                 android:layout_height="36dp"
-                android:layout_marginHorizontal="4dp"
+                android:layout_marginHorizontal="2dp"
                 android:layout_weight="1">
 
                 <ImageView
@@ -73,7 +73,7 @@
                     android:fontFamily="@font/vazirmatn_bold"
                     android:gravity="center"
                     android:maxLines="1"
-                    android:paddingHorizontal="8dp"
+                    android:paddingHorizontal="4dp"
                     android:text="@string/widget_month_label"
                     android:textColor="@color/widget_on_surface" />
             </FrameLayout>

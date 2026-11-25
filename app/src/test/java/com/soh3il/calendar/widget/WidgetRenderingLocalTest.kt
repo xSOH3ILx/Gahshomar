@@ -225,4 +225,35 @@ class WidgetRenderingLocalTest {
         assertEquals(View.GONE, hidden.findViewById<View>(R.id.compact_reminder_badge).visibility)
     }
 
+    @Test fun longPersianNamesAndTitlesFitWithoutClippingAtLargeScale() {
+        // 1405-02-02 (Ordibehesht 2, Wednesday = چهارشنبه / اردیبهشت) exercises longest Persian labels.
+        val wednesdayOrdibehesht = JalaliDate(1405, 2, 2)
+        val snapshot = WidgetSnapshot(wednesdayOrdibehesht.toEpochMillis(10), emptyList())
+        val scaleOptions = WidgetOptions(textScale = 1.3f)
+        val scaledContext = context(1.2f)
+
+        fun assertFits(kind: WidgetKind, width: Int, height: Int, viewIds: List<Int>) {
+            val root = WidgetRenderer.render(scaledContext, kind, 404, snapshot, SizeF(width.toFloat(), height.toFloat()), scaleOptions)
+                .apply(scaledContext, FrameLayout(scaledContext))
+            val density = scaledContext.resources.displayMetrics.density
+            root.measure(
+                View.MeasureSpec.makeMeasureSpec((width * density).toInt(), View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec((height * density).toInt(), View.MeasureSpec.EXACTLY),
+            )
+            root.layout(0, 0, root.measuredWidth, root.measuredHeight)
+            for (viewId in viewIds) {
+                val tv = root.findViewById<TextView>(viewId)
+                if (tv.visibility == View.VISIBLE && tv.text.isNotEmpty() && tv.layout != null) {
+                    assertEquals("Ellipsis on $kind viewId=$viewId text='${tv.text}'", 0, tv.layout.getEllipsisCount(0))
+                }
+            }
+        }
+
+        assertFits(WidgetKind.COMPACT, 110, 140, listOf(R.id.compact_day_of_week, R.id.compact_month_name, R.id.compact_day_number))
+        assertFits(WidgetKind.DAILY, 280, 145, listOf(R.id.widget_day_of_week, R.id.widget_month_name, R.id.widget_year_title))
+        assertFits(WidgetKind.MONTH, 260, 220, listOf(R.id.month_title) + WidgetViewIds.weekdays.toList())
+        assertFits(WidgetKind.WEEK, 250, 140, listOf(R.id.week_title) + WidgetViewIds.weekWeekdays.toList())
+        assertFits(WidgetKind.AGENDA, 240, 200, listOf(R.id.agenda_title))
+    }
+
 }

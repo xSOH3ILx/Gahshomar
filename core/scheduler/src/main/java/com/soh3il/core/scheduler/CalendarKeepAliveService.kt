@@ -148,7 +148,7 @@ class CalendarKeepAliveService : Service() {
         val showOnLockscreen = UserPreferences.isLockscreenCalendarEnabled(this)
         val dynamicIconEnabled = UserPreferences.isDynamicNotificationIconEnabled(this)
         val smallIconRes = if (showOnLockscreen && dynamicIconEnabled) {
-            DateNotificationAssets.getDayDrawableRes(this, today.day)
+            DateNotificationAssets.getDayDrawableRes(today.day)
         } else {
             com.soh3il.core.designsystem.R.drawable.ic_stat_calendar
         }

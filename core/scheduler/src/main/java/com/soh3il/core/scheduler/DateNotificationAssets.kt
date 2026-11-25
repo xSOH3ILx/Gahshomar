@@ -83,17 +83,44 @@ internal object DateNotificationAssets {
         return bitmap
     }
 
-    @Suppress("DiscouragedApi")
-    fun getDayDrawableRes(context: Context, day: Int): Int {
+    /** Compile-time table keeps all 31 day drawables reachable under release resource shrinking. */
+    private val DAY_DRAWABLES = intArrayOf(
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_1,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_2,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_3,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_4,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_5,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_6,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_7,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_8,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_9,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_10,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_11,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_12,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_13,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_14,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_15,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_16,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_17,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_18,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_19,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_20,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_21,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_22,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_23,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_24,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_25,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_26,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_27,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_28,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_29,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_30,
+        com.soh3il.core.designsystem.R.drawable.ic_stat_day_31
+    )
+
+    fun getDayDrawableRes(day: Int): Int {
         val safeDay = day.coerceIn(1, 31)
-        val resName = "ic_stat_day_$safeDay"
-        val resId = context.resources.getIdentifier(resName, "drawable", context.packageName)
-        if (resId != 0) return resId
-
-        val dsResId = context.resources.getIdentifier(resName, "drawable", "com.soh3il.core.designsystem")
-        if (dsResId != 0) return dsResId
-
-        return android.R.drawable.ic_menu_today
+        return DAY_DRAWABLES[safeDay - 1]
     }
 
 }

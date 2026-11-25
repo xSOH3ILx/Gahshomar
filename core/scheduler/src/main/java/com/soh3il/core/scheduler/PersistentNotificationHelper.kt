@@ -300,7 +300,7 @@ object PersistentNotificationHelper {
         val showOnLockscreen = UserPreferences.isLockscreenCalendarEnabled(context)
         val dynamicIconEnabled = UserPreferences.isDynamicNotificationIconEnabled(context)
         val smallIconRes = if (showOnLockscreen && dynamicIconEnabled) {
-            DateNotificationAssets.getDayDrawableRes(context, today.day)
+            DateNotificationAssets.getDayDrawableRes(today.day)
         } else {
             com.soh3il.core.designsystem.R.drawable.ic_stat_calendar
         }

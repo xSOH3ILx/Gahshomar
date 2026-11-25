@@ -23,16 +23,23 @@ internal object WidgetDateRenderers {
         val pillInk = if (isHolidayToday) colors.onHolidayContainer else colors.onAccentContainer
         val todayCount = if (options.showReminders) data.occurrences(data.today, 1).count { it.epochMillis >= data.now } else 0
 
+        val innerWidthDp = (size.width - 24f).coerceAtLeast(48f)
+        val daySizeDesired = if (size.height < 110f) 24f else 30f
+        val daySizeMax = ((size.height - 46f).coerceAtLeast(22f) * 0.48f).coerceAtLeast(18f)
+        val daySizeSp = (daySizeDesired * options.textScale).coerceAtMost(daySizeMax)
+
         return RemoteViews(context.packageName, R.layout.widget_calendar_compact).apply {
             WidgetSurface.apply(context, this, size, options)
             WidgetSurface.tint(this, R.id.compact_pill_bg, pillBg)
-            WidgetSurface.text(this, R.id.compact_day_of_week, data.today.dayOfWeekNameFa, pillInk, 11f, options)
-            WidgetSurface.text(this, R.id.compact_day_number, data.today.day.toPersianDigits(), pillInk, if (size.height < 110) 24f else 32f, options)
-            WidgetSurface.text(this, R.id.compact_month_name, data.today.monthNameFa, pillInk, 11f, options)
+            WidgetSurface.fittedText(context, this, R.id.compact_day_of_week, data.today.dayOfWeekNameFa, pillInk, innerWidthDp, 18f, 11.5f, options, minSp = 8.5f)
+            setTextViewText(R.id.compact_day_number, data.today.day.toPersianDigits())
+            setTextColor(R.id.compact_day_number, pillInk)
+            setTextViewTextSize(R.id.compact_day_number, TypedValue.COMPLEX_UNIT_SP, daySizeSp)
+            WidgetSurface.fittedText(context, this, R.id.compact_month_name, data.today.monthNameFa, pillInk, innerWidthDp, 20f, 12.5f, options, bold = true, minSp = 9f)
             setViewVisibility(R.id.compact_day_of_week, if (size.height >= 110) View.VISIBLE else View.GONE)
             setViewVisibility(R.id.compact_month_name, if (size.height >= 96) View.VISIBLE else View.GONE)
             if (todayCount > 0 && size.height >= 132) {
-                WidgetSurface.text(this, R.id.compact_reminder_badge, "${todayCount.toPersianDigits()} یادآور", pillInk, 9f, options)
+                WidgetSurface.fittedText(context, this, R.id.compact_reminder_badge, "${todayCount.toPersianDigits()} یادآور", pillInk, innerWidthDp, 16f, 10.5f, options, minSp = 8.5f)
                 setViewVisibility(R.id.compact_reminder_badge, View.VISIBLE)
             } else {
                 setViewVisibility(R.id.compact_reminder_badge, View.GONE)
@@ -48,19 +55,26 @@ internal object WidgetDateRenderers {
         val isHolidayToday = data.today.dayOfWeek == 7 || occasionsToday.any { it.isHoliday }
         val heroBg = if (isHolidayToday) colors.holidayContainer else colors.accentContainer
         val heroInk = if (isHolidayToday) colors.onHolidayContainer else colors.onAccentContainer
+        val heroTextWidthDp = 80f
+        val showQuickAdd = size.width >= 265f
+        val detailsWidthDp = (size.width - 128f).coerceAtLeast(96f)
+        val yearTitleWidthDp = (detailsWidthDp - if (showQuickAdd) 48f else 0f).coerceAtLeast(72f)
+        val heroDaySizeSp = ((if (size.height < 120f) 26f else 34f) * options.textScale)
+            .coerceAtMost(((size.height - 52f).coerceAtLeast(24f) * 0.48f).coerceAtLeast(22f))
 
         return RemoteViews(context.packageName, R.layout.widget_calendar_m3).apply {
             WidgetSurface.apply(context, this, size, options)
             WidgetSurface.tint(this, R.id.daily_hero_bg, heroBg)
             WidgetSurface.tint(this, R.id.daily_details_bg, colors.surfaceContainerHigh)
-            WidgetSurface.text(this, R.id.widget_day_number, data.today.day.toPersianDigits(), heroInk, if (size.height < 120) 26f else 34f, options)
-            WidgetSurface.text(this, R.id.widget_day_of_week, data.today.dayOfWeekNameFa, heroInk, 11f, options)
-            WidgetSurface.text(this, R.id.widget_month_name, data.today.monthNameFa, heroInk, 12f, options)
+            setTextViewText(R.id.widget_day_number, data.today.day.toPersianDigits())
+            setTextColor(R.id.widget_day_number, heroInk)
+            setTextViewTextSize(R.id.widget_day_number, TypedValue.COMPLEX_UNIT_SP, heroDaySizeSp)
+            WidgetSurface.fittedText(context, this, R.id.widget_day_of_week, data.today.dayOfWeekNameFa, heroInk, heroTextWidthDp, 18f, 11.5f, options, bold = true, minSp = 8.5f)
+            WidgetSurface.fittedText(context, this, R.id.widget_month_name, data.today.monthNameFa, heroInk, heroTextWidthDp, 20f, 13f, options, bold = true, minSp = 9f)
             setViewVisibility(R.id.widget_day_of_week, if (size.height >= 120) View.VISIBLE else View.GONE)
             setViewVisibility(R.id.widget_month_name, if (size.height >= 100) View.VISIBLE else View.GONE)
-            WidgetSurface.text(this, R.id.widget_year_title, "${data.today.year.toPersianDigits()} خورشیدی", colors.text, 14f, options)
+            WidgetSurface.fittedText(context, this, R.id.widget_year_title, "${data.today.year.toPersianDigits()} خورشیدی", colors.text, yearTitleWidthDp, 24f, 15f, options, bold = true, minSp = 11f)
 
-            val showQuickAdd = size.width >= 265f
             setViewVisibility(R.id.daily_add_container, if (showQuickAdd) View.VISIBLE else View.GONE)
             if (showQuickAdd) {
                 WidgetSurface.tint(this, R.id.daily_add_bg, colors.surfaceContainerHighest)
@@ -71,8 +85,8 @@ internal object WidgetDateRenderers {
             val dates = buildList {
                 if (options.showGregorian) add(DateConverter.getGregorianFormattedFa(data.today).toPersianDigits())
                 if (options.showHijri) add(DateConverter.getHijriFormatted(data.today).toPersianDigits())
-            }.joinToString(" · ")
-            WidgetSurface.text(this, R.id.widget_other_dates, dates, colors.secondary, 11f, options)
+            }.joinToString("\u200F · \u200F")
+            WidgetSurface.fittedText(context, this, R.id.widget_other_dates, dates, colors.secondary, detailsWidthDp, 18f, 11.5f, options, minSp = 8.5f)
             setViewVisibility(R.id.widget_other_dates, if (dates.isNotEmpty() && size.height >= 120) View.VISIBLE else View.GONE)
 
             val occasions = occasionsToday.joinToString("، ") { it.titleFa }
@@ -83,7 +97,7 @@ internal object WidgetDateRenderers {
                 occasions.ifEmpty { "امروز مناسبتی ثبت نشده" }
             }
             val occasionColor = if (isHolidayToday) colors.holiday else colors.secondary
-            WidgetSurface.text(this, R.id.widget_occasion, occasionText, occasionColor, 11f, options)
+            WidgetSurface.text(this, R.id.widget_occasion, occasionText, occasionColor, 11.5f, options)
             setViewVisibility(R.id.widget_occasion, if (options.showOccasions && size.height >= 135) View.VISIBLE else View.GONE)
 
             val next = data.nextToday()
@@ -116,27 +130,22 @@ internal object WidgetDateRenderers {
 
         return RemoteViews(context.packageName, R.layout.widget_calendar_month).apply {
             WidgetSurface.apply(context, this, size, options)
-            WidgetSurface.text(this, R.id.month_warning, "تعطیلات قمری این سال کامل نیست", colors.holiday, 10f, options)
-            setTextViewTextSize(
-                R.id.month_warning,
-                TypedValue.COMPLEX_UNIT_SP,
-                WidgetSurface.fitText(context, "تعطیلات قمری این سال کامل نیست", size.width - 20, 16f, 10f * options.textScale),
+            WidgetSurface.fittedText(
+                context, this, R.id.month_warning, "تعطیلات قمری این سال کامل نیست",
+                colors.holiday, size.width - 20, 16f, 10f, options,
             )
             setViewVisibility(R.id.month_warning, if (warning) View.VISIBLE else View.GONE)
 
+            val titleWidthDp = (size.width - 180f).coerceAtLeast(48f)
+            val titleDesired = if (isCurrentMonth) 16f else 15f
             if (isCurrentMonth) {
                 setViewVisibility(R.id.month_title_bg, View.GONE)
-                WidgetSurface.text(this, R.id.month_title, titleText, colors.text, 13f, options)
+                WidgetSurface.fittedText(context, this, R.id.month_title, titleText, colors.text, titleWidthDp, 36f, titleDesired, options, bold = true, minSp = 7.5f)
             } else {
                 setViewVisibility(R.id.month_title_bg, View.VISIBLE)
                 WidgetSurface.tint(this, R.id.month_title_bg, colors.accentContainer)
-                WidgetSurface.text(this, R.id.month_title, titleText, colors.onAccentContainer, 12.5f, options)
+                WidgetSurface.fittedText(context, this, R.id.month_title, titleText, colors.onAccentContainer, titleWidthDp - 4f, 36f, titleDesired, options, bold = true, minSp = 7.5f)
             }
-            setTextViewTextSize(
-                R.id.month_title,
-                TypedValue.COMPLEX_UNIT_SP,
-                WidgetSurface.fitText(context, titleText, size.width - 172, 36f, 13f * options.textScale),
-            )
             setOnClickPendingIntent(R.id.month_widget_root, WidgetNavigation.pending(context, id, WidgetDestination(first)))
             WidgetSurface.configure(context, this, id, colors, bgViewId = R.id.widget_configure_bg)
             WidgetSurface.tint(this, R.id.month_previous_bg, colors.surfaceContainerHigh)
@@ -146,8 +155,11 @@ internal object WidgetDateRenderers {
             setOnClickPendingIntent(R.id.month_previous, WidgetProvider.monthAction(context, id, -1))
             setOnClickPendingIntent(R.id.month_next, WidgetProvider.monthAction(context, id, 1))
             setOnClickPendingIntent(R.id.month_title, WidgetProvider.monthAction(context, id, 0))
+            val colWidthDp = ((size.width - 20f) / 7f).coerceAtLeast(24f)
+            val weekdaySp = WidgetSurface.fitText(context, "پ", colWidthDp, 20f, 12.5f * options.textScale, bold = true, minSp = 9f)
             for (index in 0..6) {
                 setTextColor(WidgetViewIds.weekdays[index], if (index == 6) colors.holiday else colors.secondary)
+                setTextViewTextSize(WidgetViewIds.weekdays[index], TypedValue.COMPLEX_UNIT_SP, weekdaySp)
             }
             val holidayToday = data.today.month == month.month && data.today.year == month.year && data.today.day <= first.daysInMonth
             val density = context.resources.displayMetrics.density
@@ -206,22 +218,34 @@ internal object WidgetDateRenderers {
 
         return RemoteViews(context.packageName, R.layout.widget_calendar_week).apply {
             WidgetSurface.apply(context, this, size, options)
-            WidgetSurface.text(this, R.id.week_warning, "تعطیلات قمری این هفته کامل نیست", colors.holiday, 10f, options)
-            setTextViewTextSize(
-                R.id.week_warning,
-                TypedValue.COMPLEX_UNIT_SP,
-                WidgetSurface.fitText(context, "تعطیلات قمری این هفته کامل نیست", size.width - 20, 16f, 10f * options.textScale),
+            WidgetSurface.fittedText(
+                context, this, R.id.week_warning, "تعطیلات قمری این هفته کامل نیست",
+                colors.holiday, size.width - 20, 16f, 10f, options,
             )
             setViewVisibility(R.id.week_warning, if (warning) View.VISIBLE else View.GONE)
-            WidgetSurface.text(this, R.id.week_title, weekLabel, colors.text, 13.5f, options)
+            WidgetSurface.fittedText(
+                context, this, R.id.week_title, weekLabel, colors.text,
+                (size.width - 124f).coerceAtLeast(72f), 40f, 15f, options, bold = true, minSp = 10.5f,
+            )
             WidgetSurface.configure(context, this, id, colors, bgViewId = R.id.widget_configure_bg)
             WidgetSurface.tint(this, R.id.week_add_bg, colors.surfaceContainerHigh)
             WidgetSurface.tint(this, R.id.widget_add, colors.accent)
             setOnClickPendingIntent(R.id.widget_add, WidgetNavigation.pending(context, id, WidgetDestination(data.today, add = true)))
             setOnClickPendingIntent(R.id.week_widget_root, WidgetNavigation.pending(context, id, WidgetDestination(data.today)))
+            val colWidthDp = ((size.width - 20f) / 7f).coerceAtLeast(24f)
+            val fullWeekdaySp = WidgetSurface.fitText(context, "چهارشنبه", colWidthDp, 22f, 12f * options.textScale, bold = true, minSp = 4f)
+            val useFullWeekdays = fullWeekdaySp >= 9f
+            val weekdaySp = if (useFullWeekdays) {
+                fullWeekdaySp
+            } else {
+                WidgetSurface.fitText(context, "پ", colWidthDp, 22f, 12f * options.textScale, bold = true, minSp = 8.5f)
+            }
             for (index in 0..6) {
-                setTextViewText(WidgetViewIds.weekWeekdays[index], first.plusDays(index.toLong()).dayOfWeekNameFa)
+                val date = first.plusDays(index.toLong())
+                val label = if (useFullWeekdays) date.dayOfWeekNameFa else date.dayOfWeekNameFa.first().toString()
+                setTextViewText(WidgetViewIds.weekWeekdays[index], label)
                 setTextColor(WidgetViewIds.weekWeekdays[index], if (index == 6) colors.holiday else colors.secondary)
+                setTextViewTextSize(WidgetViewIds.weekWeekdays[index], TypedValue.COMPLEX_UNIT_SP, weekdaySp)
             }
             val density = context.resources.displayMetrics.density
             val bitmap = MonthGridPainter.render(

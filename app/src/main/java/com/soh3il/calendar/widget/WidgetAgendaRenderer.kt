@@ -91,12 +91,12 @@ internal object WidgetAgendaRenderer {
         return RemoteViews(context.packageName, R.layout.widget_agenda_row).apply {
             WidgetSurface.tint(this, R.id.agenda_row_bg, colors.surfaceContainerHigh)
             WidgetSurface.tint(this, R.id.agenda_indicator, if (value.isHoliday) colors.holiday else colors.accent)
-            WidgetSurface.text(this, R.id.agenda_date, value.date, if (value.isHoliday) colors.holiday else colors.secondary, 11f, options)
+            WidgetSurface.text(this, R.id.agenda_date, value.date, if (value.isHoliday) colors.holiday else colors.secondary, 11.5f, options)
             WidgetSurface.text(this, R.id.agenda_text, value.text, colors.text, 13f, options)
             if (value.countdownLabel != null) {
                 setViewVisibility(R.id.agenda_countdown_container, View.VISIBLE)
                 WidgetSurface.tint(this, R.id.agenda_countdown_bg, colors.accentContainer)
-                WidgetSurface.text(this, R.id.agenda_countdown_text, value.countdownLabel, colors.onAccentContainer, 10f, options)
+                WidgetSurface.text(this, R.id.agenda_countdown_text, value.countdownLabel, colors.onAccentContainer, 10.5f, options)
             } else {
                 setViewVisibility(R.id.agenda_countdown_container, View.GONE)
             }
@@ -113,7 +113,10 @@ internal object WidgetAgendaRenderer {
         val colors = WidgetSurface.palette(context, options)
         return RemoteViews(context.packageName, R.layout.widget_calendar_agenda).apply {
             WidgetSurface.apply(context, this, size, options)
-            WidgetSurface.text(this, R.id.agenda_title, "رویدادهای ۷ روز پیش رو", colors.text, 14f, options)
+            WidgetSurface.fittedText(
+                context, this, R.id.agenda_title, "رویدادهای ۷ روز پیش رو",
+                colors.text, (size.width - 126f).coerceAtLeast(80f), 40f, 15f, options, bold = true, minSp = 8f,
+            )
             WidgetSurface.text(this, R.id.agenda_empty, "در هفت روز آینده رویدادی برای نمایش ندارید", colors.secondary, 13f, options)
             WidgetSurface.configure(context, this, id, colors, bgViewId = R.id.widget_configure_bg)
             WidgetSurface.tint(this, R.id.agenda_add_bg, colors.surfaceContainerHigh)

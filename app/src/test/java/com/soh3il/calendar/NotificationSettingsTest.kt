@@ -102,6 +102,23 @@ class NotificationSettingsTest {
         assertTrue(PersistentNotificationHelper.needsRefresh(context))
     }
 
+    @Test fun collapsedStatusBarShowsExactDayNumberDrawableForAzar4() {
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+        UserPreferences.setLockscreenCalendarEnabled(context, true)
+        UserPreferences.setDynamicNotificationIconEnabled(context, true)
+
+        val azar4Millis = java.time.ZonedDateTime.of(
+            2026, 11, 25, 12, 0, 0, 0, java.time.ZoneId.of("Asia/Tehran")
+        ).toInstant().toEpochMilli()
+        android.os.SystemClock.setCurrentTimeMillis(azar4Millis)
+
+        PersistentNotificationHelper.updateNotification(context, emptyList())
+        val active = manager.activeNotifications.single { it.id == PersistentNotificationHelper.NOTIFICATION_ID }.notification
+        assertEquals(com.soh3il.core.designsystem.R.drawable.ic_stat_day_4, active.smallIcon.resId)
+        assertEquals(com.soh3il.core.designsystem.R.drawable.ic_stat_day_4, active.publicVersion.smallIcon.resId)
+    }
+
     @Test fun quietPeriodCalculationHandlesNormalAndOvernightSpans() {
         // Disabled quiet hours always returns false
         UserPreferences.setQuietHoursEnabled(context, false)

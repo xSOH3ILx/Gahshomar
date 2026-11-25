@@ -45,21 +45,32 @@ data class WidgetPalette(
 )
 
 internal object WidgetSurface {
-    fun fitText(context: Context, text: String, widthDp: Float, heightDp: Float, desiredSp: Float): Float {
+    fun fitText(
+        context: Context,
+        text: String,
+        widthDp: Float,
+        heightDp: Float,
+        desiredSp: Float,
+        bold: Boolean = false,
+        minSp: Float = 4f,
+    ): Float {
         val density = context.resources.displayMetrics.density
+        val fontRes = if (bold) com.soh3il.core.designsystem.R.font.vazirmatn_bold else com.soh3il.core.designsystem.R.font.vazirmatn_regular
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = ResourcesCompat.getFont(context, com.soh3il.core.designsystem.R.font.vazirmatn_regular)
+            typeface = ResourcesCompat.getFont(context, fontRes)
         }
-        var size = desiredSp
+        val availableWidthPx = (widthDp - 2f).coerceAtLeast(8f) * density
+        val availableHeightPx = (heightDp - 2f).coerceAtLeast(8f) * density
+        var size = desiredSp.coerceAtLeast(minSp)
         val lines = text.lines()
-        while (size > 4f) {
+        while (size > minSp) {
             paint.textSize = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, size, context.resources.displayMetrics)
             val metrics = paint.fontMetricsInt
-            if (lines.maxOf { paint.measureText(it) } <= (widthDp - 2) * density &&
-                (metrics.descent - metrics.ascent) * lines.size <= (heightDp - 2) * density) break
+            if (lines.maxOf { paint.measureText(it) } <= availableWidthPx &&
+                (metrics.descent - metrics.ascent) * lines.size <= availableHeightPx) break
             size -= .25f
         }
-        return size
+        return size.coerceAtLeast(minSp)
     }
 
     private fun bestInkOn(backgroundArgb: Int, preferredLight: Int, preferredDark: Int): Int =
@@ -133,7 +144,9 @@ internal object WidgetSurface {
         val density = context.resources.displayMetrics.density.coerceAtLeast(1f)
         val widthPx = (size.width * density).roundToInt().coerceIn(1, 1400)
         val heightPx = (size.height * density).roundToInt().coerceIn(1, 1400)
-        val radiusPx = 28f * density
+        // Compact widgets pair 16dp inner card corners with 6dp outer margin => 22dp concentric radius.
+        val cornerDp = if (kotlin.math.min(size.width, size.height) < 135f) 22f else 28f
+        val radiusPx = cornerDp * density
         val strokeWidth = 1f * density
         val inset = strokeWidth / 2f
 
@@ -160,6 +173,25 @@ internal object WidgetSurface {
         views.setTextViewText(id, text)
         views.setTextColor(id, color)
         views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, sp * options.textScale)
+    }
+
+    fun fittedText(
+        context: Context,
+        views: RemoteViews,
+        id: Int,
+        text: String,
+        color: Int,
+        widthDp: Float,
+        heightDp: Float,
+        desiredSp: Float,
+        options: WidgetOptions,
+        bold: Boolean = false,
+        minSp: Float = 4f,
+    ) {
+        val sp = fitText(context, text, widthDp, heightDp, desiredSp * options.textScale, bold = bold, minSp = minSp)
+        views.setTextViewText(id, text)
+        views.setTextColor(id, color)
+        views.setTextViewTextSize(id, TypedValue.COMPLEX_UNIT_SP, sp)
     }
 
     fun fullDate(date: JalaliDate): String = "${date.dayOfWeekNameFa}، ${date.day.toPersianDigits()} ${date.monthNameFa} ${date.year.toPersianDigits()}"

@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.Typeface
 import androidx.core.content.res.ResourcesCompat
 import com.soh3il.core.designsystem.utils.toPersianDigits
@@ -24,8 +25,10 @@ internal class MonthGridPainter private constructor(    private val cellWidth: F
     private val typeface: Typeface,
 ) {
     private val circleFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
+    private val circleStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.FILL }
     private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = this@MonthGridPainter.typeface }
+    private val textBounds = Rect()
 
     companion object {
         fun render(
@@ -65,16 +68,20 @@ internal class MonthGridPainter private constructor(    private val cellWidth: F
         if (cell.day <= 0) return
         val cx = cellWidth / 2f
         val cy = cellHeight / 2f
-        val radius = min(cellWidth, cellHeight) / 2f - min(cellWidth, cellHeight) * .09f
+        val minSide = min(cellWidth, cellHeight)
+        val radius = minSide * 0.40f
 
         if (cell.isToday) {
             circleFill.color = colors.accent
             canvas.drawCircle(cx, cy, radius, circleFill)
         } else if (cell.isHoliday) {
-            circleFill.color = withAlpha(colors.holidayContainer, if (colors.isDark) 150 else 190)
+            circleFill.color = withAlpha(colors.holidayContainer, if (colors.isDark) 135 else 175)
             canvas.drawCircle(cx, cy, radius, circleFill)
+            circleStroke.strokeWidth = (minSide * 0.03f).coerceAtLeast(1.5f)
+            circleStroke.color = withAlpha(colors.holiday, if (colors.isDark) 95 else 75)
+            canvas.drawCircle(cx, cy, radius - circleStroke.strokeWidth / 2f, circleStroke)
         } else if (cell.hasReminder) {
-            circleFill.color = withAlpha(colors.accentContainer, if (colors.isDark) 110 else 140)
+            circleFill.color = withAlpha(colors.accentContainer, if (colors.isDark) 115 else 145)
             canvas.drawCircle(cx, cy, radius, circleFill)
         }
 
@@ -84,15 +91,23 @@ internal class MonthGridPainter private constructor(    private val cellWidth: F
             cell.isHoliday -> colors.holiday
             else -> colors.text
         }
-        textPaint.textSize = min(cellWidth, cellHeight) * .46f * textScale
-        val metrics = textPaint.fontMetrics
+        val dotRadius = (minSide * 0.058f).coerceAtLeast(1.2f)
+        // Cap glyph height inside the circle so scaled text never touches the rim or reminder dot.
+        val maxTextSize = radius * if (cell.hasReminder) 1.06f else 1.18f
+        textPaint.textSize = (minSide * 0.37f * textScale).coerceAtMost(maxTextSize)
+        textPaint.getTextBounds(number, 0, number.length, textBounds)
         val textWidth = textPaint.measureText(number)
-        canvas.drawText(number, cx - textWidth / 2f, cy - (metrics.ascent + metrics.descent) / 2f, textPaint)
+        val textCenterY = if (cell.hasReminder) cy - dotRadius * 1.1f else cy
+        canvas.drawText(number, cx - textWidth / 2f, textCenterY - textBounds.exactCenterY(), textPaint)
 
         if (cell.hasReminder) {
-            dotPaint.color = if (cell.isToday) colors.onAccent else colors.accent
-            val dotRadius = min(cellWidth, cellHeight) * .07f
-            canvas.drawCircle(cx, cy + radius * .72f, dotRadius, dotPaint)
+            dotPaint.color = when {
+                cell.isToday -> colors.onAccent
+                cell.isHoliday -> colors.holiday
+                else -> colors.accent
+            }
+            val dotY = min(cy + radius * 0.74f, cellHeight - dotRadius * 1.4f)
+            canvas.drawCircle(cx, dotY, dotRadius, dotPaint)
         }
     }
 }
