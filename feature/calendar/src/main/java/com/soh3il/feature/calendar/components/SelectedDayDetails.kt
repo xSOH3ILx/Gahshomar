@@ -11,9 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.PaddingValues
@@ -93,7 +90,7 @@ fun SelectedDayDetails(
             start = 16.dp,
             end = 16.dp,
             top = 12.dp,
-            bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 16.dp,
+            bottom = 16.dp,
         )
     ) {
         item {
@@ -274,8 +271,8 @@ private fun TripleDateCard(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .clip(MaterialTheme.shapes.small)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
             .clickable { onClick() }
             .heightIn(min = 48.dp)
             .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -287,7 +284,7 @@ private fun TripleDateCard(
         ) {
             Text(
                 text = title,
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -302,7 +299,7 @@ private fun TripleDateCard(
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            fontSize = 12.sp,
+            style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,

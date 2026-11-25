@@ -24,7 +24,7 @@ object AutoStartHelper {
                 ManufacturerGuide(
                     brandName = "شیائومی (Xiaomi / MIUI / HyperOS)",
                     instructions = listOf(
-                        "در صفحه‌ای که باز می‌شود، کلید شروع خودکار (Autostart) را برای برنامه SOH3IL روشن کنید.",
+                        "در صفحه‌ای که باز می‌شود، کلید شروع خودکار (Autostart) را برای برنامه گاه‌شمار خورشیدی روشن کنید.",
                         "در بخش صرفه‌جویی باتری (Battery Saver)، حالت را روی «بدون محدودیت (No restrictions)» قرار دهید تا یادآورها بدون کوچک‌ترین تاخیر زنگ بزنند.",
                         "در صورت امکان، آیکون برنامه را در صفحه برنامه‌های اخیر (Recent Apps) قفل کنید."
                     )
@@ -35,7 +35,7 @@ object AutoStartHelper {
                     brandName = "سامسونگ (Samsung / One UI)",
                     instructions = listOf(
                         "در بخش مراقبت دستگاه (Device care) وارد «باتری» شوید.",
-                        "در بخش «محدودیت‌های استفاده در پس‌زمینه (Background usage limits)»، برنامه SOH3IL را به «برنامه‌های هرگز در حالت خواب (Never sleeping apps)» اضافه نمایید.",
+                        "در بخش «محدودیت‌های استفاده در پس‌زمینه (Background usage limits)»، برنامه گاه‌شمار خورشیدی را به «برنامه‌های هرگز در حالت خواب (Never sleeping apps)» اضافه نمایید.",
                         "در بخش بهینه‌سازی مصرف باتری برنامه، حالت را روی «نامحدود (Unrestricted)» قرار دهید."
                     )
                 )
@@ -45,7 +45,7 @@ object AutoStartHelper {
                 ManufacturerGuide(
                     brandName = "هواوی و آنر (Huawei / Honor / EMUI)",
                     instructions = listOf(
-                        "در بخش راه‌اندازی برنامه (App Launch)، کلید خودکار را برای SOH3IL خاموش و به «دستی (Manage manually)» تغییر دهید.",
+                        "در بخش راه‌اندازی برنامه (App Launch)، کلید خودکار را برای گاه‌شمار خورشیدی خاموش و به «دستی (Manage manually)» تغییر دهید.",
                         "هر ۳ گزینه «راه‌اندازی خودکار (Auto-launch)»، «راه‌اندازی ثانویه (Secondary launch)» و «اجرا در پس‌زمینه (Run in background)» را فعال کنید."
                     )
                 )
@@ -56,7 +56,7 @@ object AutoStartHelper {
                     brandName = "اوپو و ریلمی (Oppo / Realme / ColorOS)",
                     instructions = listOf(
                         "در بخش مدیریت برنامه (App Management)، وارد «شروع خودکار (Auto-launch)» شوید.",
-                        "کلید شروع خودکار را برای SOH3IL فعال کنید و مجوز فعالیت در پس‌زمینه را روشن بگذارید."
+                        "کلید شروع خودکار را برای گاه‌شمار خورشیدی فعال کنید و مجوز فعالیت در پس‌زمینه را روشن بگذارید."
                     )
                 )
             }
@@ -66,7 +66,7 @@ object AutoStartHelper {
                     brandName = "ویوو (Vivo / iQOO / Funtouch OS)",
                     instructions = listOf(
                         "در برنامه iManager یا بخش مدیریت دسترسی‌ها، وارد «Autostart» شوید.",
-                        "کلید برنامه SOH3IL را روشن کنید و در مصرف بالای پس‌زمینه اجازه فعالیت بدهید."
+                        "کلید برنامه گاه‌شمار خورشیدی را روشن کنید و در مصرف بالای پس‌زمینه اجازه فعالیت بدهید."
                     )
                 )
             }
@@ -74,7 +74,7 @@ object AutoStartHelper {
                 ManufacturerGuide(
                     brandName = "وان‌پلاس (OnePlus / OxygenOS)",
                     instructions = listOf(
-                        "در بخش باتری، بهینه‌سازی باتری (Battery Optimization) را برای SOH3IL روی Don't optimize قرار دهید.",
+                        "در بخش باتری، بهینه‌سازی باتری (Battery Optimization) را برای گاه‌شمار خورشیدی روی Don't optimize قرار دهید.",
                         "در بخش Auto-launch برنامه را مجاز کنید."
                     )
                 )

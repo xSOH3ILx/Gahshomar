@@ -79,4 +79,21 @@ class ReminderDraftStateTest {
         val draft = ReminderDraftState(JalaliDate(1405, 8, 23), reminder, defaultPreReminderMinutes = 60)
         assertEquals(30, draft.selectedPreReminderMinutes)
     }
+
+    @Test fun showCountdownFlagInitializesAndSurvivesSaver() {
+        val newDraft = ReminderDraftState(JalaliDate(1405, 8, 23), null)
+        assertFalse(newDraft.showCountdown)
+
+        val existing = Reminder(
+            id = 11, title = "کنفرانس", jalaliYear = 1405, jalaliMonth = 9, jalaliDay = 1,
+            hour = 10, minute = 0, showCountdown = true
+        )
+        val editDraft = ReminderDraftState(JalaliDate(1405, 8, 23), existing)
+        assertTrue(editDraft.showCountdown)
+
+        val scope = object : SaverScope { override fun canBeSaved(value: Any) = true }
+        val saved = with(ReminderDraftState.Saver) { scope.save(editDraft) }!!
+        val restored = ReminderDraftState.Saver.restore(saved)!!
+        assertTrue(restored.showCountdown)
+    }
 }

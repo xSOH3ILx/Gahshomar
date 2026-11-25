@@ -6,8 +6,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -39,15 +40,19 @@ fun CustomPreReminderDialog(
 ) {
     var amountText by remember { mutableStateOf(initialPreReminder?.value?.toString() ?: "2") }
     var selectedUnit by remember { mutableStateOf(initialPreReminder?.unit ?: PreReminderUnit.DAYS) }
+    var showError by remember { mutableStateOf(false) }
+    val parsedAmount = amountText.toIntStandardOrNull()
+    val isInvalid = parsedAmount == null || parsedAmount <= 0
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(
                 onClick = {
-                    val amount = amountText.toIntStandardOrNull() ?: 1
-                    if (amount > 0) {
-                        onConfirm(PreReminder(amount, selectedUnit))
+                    if (isInvalid) {
+                        showError = true
+                    } else {
+                        onConfirm(PreReminder(parsedAmount!!, selectedUnit))
                     }
                 }
             ) {
@@ -62,15 +67,15 @@ fun CustomPreReminderDialog(
         title = {
             Text(
                 text = "تنظیم پیش‌یادآور دلخواه",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     text = "چه مدت قبل از زمان یادآور اصلی به شما هشدار داده شود؟",
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -82,21 +87,26 @@ fun CustomPreReminderDialog(
                         val standard = input.toEnglishDigits()
                         if (standard.all { it.isDigit() } && standard.length <= 4) {
                             amountText = standard
+                            showError = false
                         }
                     },
                     visualTransformation = PersianDigitVisualTransformation(),
                     label = { Text("مقدار زمان") },
+                    isError = showError && isInvalid,
+                    supportingText = if (showError && isInvalid) {
+                        { Text("عدد معتبر بزرگ‌تر از صفر وارد کنید") }
+                    } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
                     text = "واحد زمانی:",
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold
                 )
 
@@ -115,16 +125,16 @@ fun CustomPreReminderDialog(
                         FilterChip(
                             selected = selectedUnit == unit,
                             onClick = { selectedUnit = unit },
-                            label = { Text(name, fontSize = 12.sp) },
+                            label = { Text(name, style = MaterialTheme.typography.labelMedium) },
                             modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(10.dp)
+                            shape = MaterialTheme.shapes.small
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val amountVal = amountText.toIntOrNull() ?: 0
+                val amountVal = parsedAmount ?: 0
                 val unitStr = when (selectedUnit) {
                     PreReminderUnit.DAYS -> "روز"
                     PreReminderUnit.HOURS -> "ساعت"
@@ -132,7 +142,7 @@ fun CustomPreReminderDialog(
                 }
                 Text(
                     text = "پیش‌نمایش: ${amountVal.toPersianDigits()} $unitStr قبل از موعد",
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )

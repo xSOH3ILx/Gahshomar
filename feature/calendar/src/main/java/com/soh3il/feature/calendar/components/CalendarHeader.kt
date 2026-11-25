@@ -72,7 +72,7 @@ fun CalendarHeader(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
+                    .clip(MaterialTheme.shapes.small)
                     .then(
                         if (onHeaderTitleClick != null) {
                             Modifier.clickable(
@@ -86,8 +86,7 @@ fun CalendarHeader(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = "${currentDate.monthNameFa} ${currentDate.year.toPersianDigits()}",
-                        fontSize = 19.sp,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     if (onHeaderTitleClick != null) {
@@ -107,9 +106,8 @@ fun CalendarHeader(
                 val companionText = "$gregMonthName ${gregConv.gregorian.year.toPersianDigits()} • $hijriMonthName ${gregConv.hijriYear.toPersianDigits()}"
                 Text(
                     text = companionText,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = FontWeight.Normal
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -123,11 +121,11 @@ fun CalendarHeader(
                 label = {
                     Text(
                         text = "امروز",
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialTheme.shapes.small,
                 colors = SuggestionChipDefaults.suggestionChipColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     labelColor = MaterialTheme.colorScheme.onSecondaryContainer

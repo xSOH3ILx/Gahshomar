@@ -63,7 +63,7 @@ object NotificationHelper {
             CHANNEL_NAME,
             previous?.importance ?: NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = "اعلان‌های زنده و فوری یادآورهای تقویم SOH3IL"
+            description = "اعلان‌های زنده و فوری یادآورهای گاه‌شمار خورشیدی"
             previous?.vibrationPattern?.let { vibrationPattern = it }
             enableVibration(previous?.shouldVibrate() ?: true)
             previous?.let {

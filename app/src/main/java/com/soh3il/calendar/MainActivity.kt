@@ -72,6 +72,10 @@ class MainActivity : ComponentActivity() {
                 ).show()
             } else {
                 recoverMissedAlarms()
+                if (UserPreferences.isPersistentNotificationEnabled(this)) {
+                    com.soh3il.core.scheduler.PersistentNotificationHelper.updateNotification(this)
+                    com.soh3il.core.scheduler.CalendarKeepAliveService.start(this)
+                }
             }
         }
 
@@ -255,6 +259,19 @@ class MainActivity : ComponentActivity() {
                                     onReminderClick = {
                                         editingReminderId = it.id
                                         showAddSheet = true
+                                    },
+                                    onToggleReminderCountdown = { reminder ->
+                                        coroutineScope.launch {
+                                            try {
+                                                withContext(Dispatchers.IO) {
+                                                    ReminderMutations.setCountdown(context, db, reminder.id, !reminder.showCountdown)
+                                                }
+                                            } catch (error: CancellationException) {
+                                                throw error
+                                            } catch (_: Exception) {
+                                                android.widget.Toast.makeText(context, "تغییر وضعیت شمارش معکوس انجام نشد", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     }
                                 )
                                 1 -> SettingsScreen(

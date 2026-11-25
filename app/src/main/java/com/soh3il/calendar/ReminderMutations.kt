@@ -87,6 +87,11 @@ internal object ReminderMutations {
         refresh(context)
     }
 
+    suspend fun setCountdown(context: Context, db: Soh3ilDatabase, reminderId: Long, showCountdown: Boolean) {
+        db.reminderDao().setReminderCountdown(reminderId, showCountdown)
+        refresh(context)
+    }
+
     private fun refresh(context: Context) {
         CalendarAppWidgetProvider.requestUpdate(context)
         if (UserPreferences.isPersistentNotificationEnabled(context)) {

@@ -101,7 +101,6 @@ fun AgeCountdownCard(
     onSetBirth: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hasContent = state.ageYears != null || state.nextReminderTitle != null
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -146,28 +145,8 @@ fun AgeCountdownCard(
                 TextButton(onClick = onSetBirth) {
                     Text("ثبت تاریخ تولد")
                 }
-            }
-
-            if (state.nextReminderTitle != null) {
-                Column {
-                    Text(
-                        text = "رویداد بعدی",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    val daysRemaining = (state.nextReminderDays ?: 0L).toPersianDigits()
-                    val formattedDate = state.nextReminderDate?.format()?.toPersianDigits() ?: ""
-                    Text(
-                        text = "${state.nextReminderTitle} — $daysRemaining روز مانده ($formattedDate)",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                }
-            }
-
-            if (!hasContent) {
                 Text(
-                    text = "تاریخ تولد یا یادآور بعدی را اضافه کنید تا سن و شمارش معکوس در این بخش نمایش داده شود.",
+                    text = "تاریخ تولد خود را ثبت کنید تا سن و روزشمار تولد بعدی در این بخش نمایش داده شود.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

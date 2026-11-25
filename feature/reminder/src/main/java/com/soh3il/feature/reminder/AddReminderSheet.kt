@@ -30,18 +30,22 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.Switch
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.soh3il.core.designsystem.components.FarsiCard
+import com.soh3il.core.designsystem.components.FarsiSwitchRow
 import com.soh3il.core.designsystem.utils.toPersianDigits
 import com.soh3il.core.jalali.JalaliDate
 import com.soh3il.core.model.RecurrenceRule
@@ -71,6 +75,7 @@ fun AddReminderSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
+    var showTitleError by remember { mutableStateOf(false) }
 
     val draft = rememberSaveable(existingReminder?.id, saver = ReminderDraftState.Saver) {
         ReminderDraftState(
@@ -133,9 +138,13 @@ fun AddReminderSheet(
                 // 2. Title & Description Input Fields
                 ReminderFormFields(
                     title = title,
-                    onTitleChange = { title = it },
+                    onTitleChange = {
+                        title = it
+                        if (it.isNotBlank()) showTitleError = false
+                    },
                     description = description,
-                    onDescriptionChange = { description = it }
+                    onDescriptionChange = { description = it },
+                    titleError = showTitleError && title.isBlank()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -198,15 +207,36 @@ fun AddReminderSheet(
                     }
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Text("یادآور فعال باشد")
-                    Switch(checked = reminderEnabled, onCheckedChange = { reminderEnabled = it }, enabled = !isSaving)
+                FarsiCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FarsiSwitchRow(
+                            title = "یادآور فعال باشد",
+                            checked = reminderEnabled,
+                            onCheckedChange = { reminderEnabled = it },
+                            enabled = !isSaving
+                        )
+                        FarsiSwitchRow(
+                            title = "شمارش معکوس تا رویداد",
+                            subtitle = "نمایش روزشمار این رویداد در تب رویدادها",
+                            checked = showCountdown,
+                            onCheckedChange = { showCountdown = it },
+                            enabled = !isSaving
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
                 // 7. Save CTA Button (M3 Pill shape)
                 Button(
                     onClick = {
+                        if (title.isBlank()) {
+                            showTitleError = true
+                            return@Button
+                        }
                         if (title.isNotBlank()) {
                             if (reminderEnabled && recurrenceType == RecurrenceType.NONE &&
                                 selectedDate.toEpochMillis(selectedHour, selectedMinute) <= System.currentTimeMillis()) {
@@ -243,6 +273,7 @@ fun AddReminderSheet(
                                 ),
                                 preReminders = preList,
                                 isEnabled = reminderEnabled,
+                                showCountdown = showCountdown,
                                 colorHex = selectedColorHex
                             )
                             onSaveReminder(reminder)
@@ -251,7 +282,7 @@ fun AddReminderSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
-                    enabled = title.isNotBlank() && !isSaving,
+                    enabled = !isSaving,
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary

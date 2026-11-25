@@ -69,6 +69,7 @@ data class Reminder(
     val recurrence: RecurrenceRule = RecurrenceRule(),
     val preReminders: List<PreReminder> = emptyList(),
     val isEnabled: Boolean = true,
+    val showCountdown: Boolean = false,
     val colorHex: String = "#2563EB",
     val nextTriggerEpochMillis: Long = 0L
 )

@@ -20,6 +20,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,14 +36,15 @@ import com.soh3il.core.designsystem.utils.toPersianDigits
 fun WidgetPinDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
     val manager = AppWidgetManager.getInstance(context)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var message by remember { mutableStateOf<String?>(null) }
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).navigationBarsPadding().imePadding().padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("ویجت‌های صفحهٔ اصلی", style = MaterialTheme.typography.headlineSmall)
             Text("پیش‌نمایش‌ها دادهٔ نمونه دارند. هر ویجت را می‌توانید جداگانه تنظیم کنید.")
             if (!manager.isRequestPinAppWidgetSupported) {
-                Text("روی فضای خالی صفحهٔ اصلی نگه دارید، فهرست ویجت‌ها را باز کنید و SOH3IL را پیدا کنید.")
+                Text("روی فضای خالی صفحهٔ اصلی نگه دارید، فهرست ویجت‌ها را باز کنید و «گاه‌شمار خورشیدی» را پیدا کنید.")
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
             WidgetKind.entries.forEach { kind ->

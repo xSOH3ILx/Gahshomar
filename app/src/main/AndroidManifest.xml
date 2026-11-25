@@ -523,6 +523,7 @@
             <intent-filter>
                 <action android:name="com.soh3il.calendar.ACTION_MIDNIGHT_TICK" />
                 <action android:name="com.soh3il.calendar.ACTION_NOTIFICATION_DISMISSED" />
+                <action android:name="com.soh3il.calendar.ACTION_KEEP_ALIVE_WATCHDOG" />
             </intent-filter>
         </receiver>
 
@@ -616,6 +617,7 @@
         <service
             android:name="com.soh3il.core.scheduler.CalendarKeepAliveService"
             android:exported="false"
+            android:stopWithTask="false"
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"

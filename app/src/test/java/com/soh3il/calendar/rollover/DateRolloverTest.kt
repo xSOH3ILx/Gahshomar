@@ -19,13 +19,19 @@ import org.robolectric.annotation.Config
 import java.time.Instant
 import java.util.TimeZone
 import android.app.Notification
+import android.app.NotificationChannel
 import android.content.Intent
+import android.os.PowerManager
 import com.soh3il.core.jalali.JalaliDate
+import com.soh3il.core.scheduler.CalendarKeepAliveService
 import com.soh3il.core.scheduler.MidnightReceiver
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.async
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.robolectric.Robolectric
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35], application = Application::class, instrumentedPackages = ["com.soh3il"])
@@ -153,6 +159,119 @@ class DateRolloverTest {
         com.soh3il.core.scheduler.LiveIconHelper.validateAndHealLauncherAliases(context)
         assertEquals(android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_ENABLED, pm.getComponentEnabledSetting(current))
         assertEquals(android.content.pm.PackageManager.COMPONENT_ENABLED_STATE_DISABLED, pm.getComponentEnabledSetting(old))
+    }
+
+    @Test fun persistentNotificationUsesNoClearSilentDefaultChannelAndImmediateBehavior() {
+        val context = RuntimeEnvironment.getApplication()
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+        PersistentNotificationHelper.updateNotification(context, emptyList())
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val channel = manager.getNotificationChannel(PersistentNotificationHelper.CHANNEL_ID)
+        assertNotNull(channel)
+        assertEquals(NotificationManager.IMPORTANCE_DEFAULT, channel.importance)
+        assertNull(channel.sound)
+        assertFalse(channel.shouldVibrate())
+        assertEquals(Notification.VISIBILITY_PUBLIC, channel.lockscreenVisibility)
+
+        val notification = manager.activeNotifications.single { it.id == PersistentNotificationHelper.NOTIFICATION_ID }.notification
+        assertTrue((notification.flags and Notification.FLAG_ONGOING_EVENT) != 0)
+        assertTrue((notification.flags and Notification.FLAG_NO_CLEAR) != 0)
+        assertNotNull(notification.deleteIntent)
+        assertEquals(PersistentNotificationHelper.CHANNEL_ID, notification.channelId)
+    }
+
+    @Test fun legacyChannelMigrationUpgradesNormalAndRespectsBlockedChannel() {
+        val context = RuntimeEnvironment.getApplication()
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        manager.deleteNotificationChannel(PersistentNotificationHelper.CHANNEL_ID)
+        manager.createNotificationChannel(
+            NotificationChannel("persistent_date_channel", "old", NotificationManager.IMPORTANCE_LOW)
+        )
+        PersistentNotificationHelper.createNotificationChannel(context)
+        assertNull(manager.getNotificationChannel("persistent_date_channel"))
+        assertEquals(
+            NotificationManager.IMPORTANCE_DEFAULT,
+            manager.getNotificationChannel(PersistentNotificationHelper.CHANNEL_ID).importance
+        )
+
+        manager.deleteNotificationChannel(PersistentNotificationHelper.CHANNEL_ID)
+        manager.createNotificationChannel(
+            NotificationChannel("persistent_date_channel", "old", NotificationManager.IMPORTANCE_NONE)
+        )
+        PersistentNotificationHelper.createNotificationChannel(context)
+        assertEquals(
+            NotificationManager.IMPORTANCE_NONE,
+            manager.getNotificationChannel(PersistentNotificationHelper.CHANNEL_ID).importance
+        )
+    }
+
+    @Test fun dismissedPersistentNotificationRestoresWhenEnabledEvenDuringQuietHoursAndStaysOffWhenDisabled(): Unit = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+        UserPreferences.setQuietHoursEnabled(context, true)
+        UserPreferences.setQuietStartMinute(context, 0)
+        UserPreferences.setQuietEndMinute(context, 23 * 60 + 59)
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(PersistentNotificationHelper.NOTIFICATION_ID)
+        MidnightReceiver.refreshNow(context, MidnightReceiver.ACTION_NOTIFICATION_DISMISSED) { emptyList() }
+        assertNotNull(manager.activeNotifications.firstOrNull { it.id == PersistentNotificationHelper.NOTIFICATION_ID })
+
+        UserPreferences.setPersistentNotificationEnabled(context, false)
+        manager.cancel(PersistentNotificationHelper.NOTIFICATION_ID)
+        MidnightReceiver.refreshNow(context, MidnightReceiver.ACTION_NOTIFICATION_DISMISSED) { emptyList() }
+        assertTrue(manager.activeNotifications.none { it.id == PersistentNotificationHelper.NOTIFICATION_ID })
+    }
+
+    @Test fun keepAliveServicePostsRealNotificationAndWatchdogRecoversMissingNotification(): Unit = runBlocking {
+        val context = RuntimeEnvironment.getApplication()
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+
+        val controller = Robolectric.buildService(CalendarKeepAliveService::class.java).create().startCommand(0, 0)
+        val service = controller.get()
+        val foregroundNotification = shadowOf(service).lastForegroundNotification
+        assertNotNull(foregroundNotification)
+        assertEquals(JalaliDate.now().toJdn(), foregroundNotification.extras.getLong(PersistentNotificationHelper.EXTRA_DATE_JDN))
+        assertTrue((foregroundNotification.flags and Notification.FLAG_NO_CLEAR) != 0)
+        assertNotNull(foregroundNotification.deleteIntent)
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        manager.cancel(PersistentNotificationHelper.NOTIFICATION_ID)
+        MidnightReceiver.refreshNow(context, MidnightReceiver.ACTION_KEEP_ALIVE_WATCHDOG) { emptyList() }
+        assertNotNull(manager.activeNotifications.firstOrNull { it.id == PersistentNotificationHelper.NOTIFICATION_ID })
+
+        UserPreferences.setPersistentNotificationEnabled(context, false)
+        manager.cancel(PersistentNotificationHelper.NOTIFICATION_ID)
+        MidnightReceiver.refreshNow(context, MidnightReceiver.ACTION_KEEP_ALIVE_WATCHDOG) { emptyList() }
+        assertTrue(manager.activeNotifications.none { it.id == PersistentNotificationHelper.NOTIFICATION_ID })
+        controller.destroy()
+    }
+
+    @Test fun powerSaveAndDndChangesRecoverMissingPersistentNotification() {
+        val context = RuntimeEnvironment.getApplication()
+        shadowOf(context).grantPermissions(android.Manifest.permission.POST_NOTIFICATIONS)
+        UserPreferences.setPersistentNotificationEnabled(context, true)
+        com.soh3il.core.scheduler.DateStatusRecovery.install(context)
+
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        listOf(
+            PowerManager.ACTION_POWER_SAVE_MODE_CHANGED,
+            NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED
+        ).forEach { action ->
+            manager.cancel(PersistentNotificationHelper.NOTIFICATION_ID)
+            val signal = Intent(action)
+            shadowOf(context).getReceiversForIntent(signal).forEach { it.onReceive(context, signal) }
+            val deadline = System.nanoTime() + 2_000_000_000L
+            while (manager.activeNotifications.none { it.id == PersistentNotificationHelper.NOTIFICATION_ID } && System.nanoTime() < deadline) {
+                Thread.sleep(10)
+            }
+            assertTrue("Missing notification after $action", manager.activeNotifications.any { it.id == PersistentNotificationHelper.NOTIFICATION_ID })
+        }
     }
 
 }

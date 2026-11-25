@@ -24,7 +24,7 @@ data class UpdateInfo(
  */
 object UpdateChecker {
 
-    private const val GITHUB_REPO = "xSOH3ILx/SOH3IL"
+    private const val GITHUB_REPO = "xSOH3ILx/Gahshomar"
     private const val GITHUB_API_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
 
     private val client = OkHttpClient.Builder()

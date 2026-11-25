@@ -1,5 +1,6 @@
 package com.soh3il.core.database.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.soh3il.core.model.PreReminder
@@ -20,6 +21,8 @@ data class ReminderEntity(
     val recurrenceRule: RecurrenceRule,
     val preReminders: List<PreReminder>,
     val isEnabled: Boolean = true,
+    @ColumnInfo(defaultValue = "0")
+    val showCountdown: Boolean = false,
     val colorHex: String = "#2563EB",
     val nextTriggerEpochMillis: Long = 0L
 ) {
@@ -35,6 +38,7 @@ data class ReminderEntity(
         recurrence = recurrenceRule,
         preReminders = preReminders,
         isEnabled = isEnabled,
+        showCountdown = showCountdown,
         colorHex = colorHex,
         nextTriggerEpochMillis = nextTriggerEpochMillis
     )
@@ -52,6 +56,7 @@ data class ReminderEntity(
             recurrenceRule = domain.recurrence,
             preReminders = domain.preReminders,
             isEnabled = domain.isEnabled,
+            showCountdown = domain.showCountdown,
             colorHex = domain.colorHex,
             nextTriggerEpochMillis = domain.nextTriggerEpochMillis
         )

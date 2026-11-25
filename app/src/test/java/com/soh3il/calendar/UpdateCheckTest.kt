@@ -20,7 +20,7 @@ class UpdateCheckTest {
         assertThrows(IOException::class.java) {
             runBlocking { UpdateChecker.checkForUpdates("1.4.0") { request ->
                 Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200).message("fixture")
-                    .body("{\"tag_name\":\"invalid\",\"html_url\":\"https://github.com/xSOH3ILx/SOH3IL/releases/latest\"}".toResponseBody()).build()
+                    .body("{\"tag_name\":\"invalid\",\"html_url\":\"https://github.com/xSOH3ILx/Gahshomar/releases/latest\"}".toResponseBody()).build()
             } }
         }
     }
@@ -39,7 +39,7 @@ class UpdateCheckTest {
     @Test fun validEqualVersionIsAConfirmedNoUpdateResult() = runBlocking {
         val result = UpdateChecker.checkForUpdates("1.4.0") { request ->
             Response.Builder().request(request).protocol(Protocol.HTTP_1_1).code(200).message("fixture")
-                .body("{\"tag_name\":\"v1.4.0\",\"html_url\":\"https://github.com/xSOH3ILx/SOH3IL/releases/tag/v1.4.0\",\"body\":\"fixture\"}".toResponseBody()).build()
+                .body("{\"tag_name\":\"v1.4.0\",\"html_url\":\"https://github.com/xSOH3ILx/Gahshomar/releases/tag/v1.4.0\",\"body\":\"fixture\"}".toResponseBody()).build()
         }
         assertFalse(result.hasUpdate)
         assertEquals("1.4.0", result.latestVersionName)

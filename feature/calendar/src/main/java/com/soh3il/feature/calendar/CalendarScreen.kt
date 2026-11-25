@@ -20,9 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -64,6 +62,7 @@ fun CalendarScreen(
     additionalOccasions: List<Occasion> = emptyList(),
     onAddReminderClick: (JalaliDate) -> Unit = {},
     onReminderClick: (Reminder) -> Unit = {},
+    onToggleReminderCountdown: ((Reminder) -> Unit)? = null,
     birthJdn: Long? = null,
     onSetBirthDate: () -> Unit = {},
     onDisplayedYearChanged: (Int) -> Unit = {},
@@ -117,14 +116,11 @@ fun CalendarScreen(
         list.filter { it.jalaliDate == selectedDate.format("YYYY-MM-DD") }
     }
 
-    Scaffold(
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
             // View mode selector using the expressive segmented control pattern.
             SingleChoiceSegmentedButtonRow(
                 modifier = Modifier
@@ -139,7 +135,7 @@ fun CalendarScreen(
                 ) {
                     Text(
                         text = "تقویم ماهانه",
-                        fontSize = 13.sp,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (viewMode == 0) FontWeight.Bold else FontWeight.Medium,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
@@ -152,8 +148,8 @@ fun CalendarScreen(
                     icon = {} // [LOCKED RULE] Checkmark removed per user requirement
                 ) {
                     Text(
-                        text = "دستور کار (رویدادها)",
-                        fontSize = 13.sp,
+                        text = "رویدادها",
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (viewMode == 1) FontWeight.Bold else FontWeight.Medium,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.fillMaxWidth()
@@ -247,18 +243,7 @@ fun CalendarScreen(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Age since birth + countdown to the next reminder.
-                            AgeCountdownCard(
-                                state = remember(selectedDate, birthJdn, reminders) {
-                                    computeAgeCountdown(selectedDate, birthJdn, reminders)
-                                },
-                                onSetBirth = onSetBirthDate,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
+                            Spacer(modifier = Modifier.height(10.dp))
 
                             // 4. Selected Day Info & Occasions & Reminders
                             SelectedDayDetails(
@@ -271,17 +256,19 @@ fun CalendarScreen(
                             )
                         }
                     } else {
-                        // Agenda / Schedule View
+                        // Agenda / Events View
                         AgendaView(
                             today = today,
                             reminders = reminders,
                             additionalOccasions = additionalOccasions,
                             onReminderClick = onReminderClick,
+                            onToggleReminderCountdown = onToggleReminderCountdown,
+                            birthJdn = birthJdn,
+                            onSetBirthDate = onSetBirthDate,
                             modifier = Modifier.fillMaxSize()
                         )
                     }
                 }
             }
-        }
     }
 }

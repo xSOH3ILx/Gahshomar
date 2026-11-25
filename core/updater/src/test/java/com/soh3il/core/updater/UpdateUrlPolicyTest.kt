@@ -8,9 +8,9 @@ class UpdateUrlPolicyTest {
 
     @Test
     fun acceptsOnlyHttpsGitHubHosts() {
-        assertTrue(UpdateUrlPolicy.isAllowed("https://api.github.com/repos/xSOH3ILx/SOH3IL/releases/latest"))
-        assertTrue(UpdateUrlPolicy.isAllowed("https://github.com/xSOH3ILx/SOH3IL/releases/latest"))
-        assertFalse(UpdateUrlPolicy.isAllowed("http://api.github.com/repos/xSOH3ILx/SOH3IL/releases/latest"))
+        assertTrue(UpdateUrlPolicy.isAllowed("https://api.github.com/repos/xSOH3ILx/Gahshomar/releases/latest"))
+        assertTrue(UpdateUrlPolicy.isAllowed("https://github.com/xSOH3ILx/Gahshomar/releases/latest"))
+        assertFalse(UpdateUrlPolicy.isAllowed("http://api.github.com/repos/xSOH3ILx/Gahshomar/releases/latest"))
         assertFalse(UpdateUrlPolicy.isAllowed("https://example.com/release.apk"))
         assertFalse(UpdateUrlPolicy.isAllowed("https://objects.githubusercontent.com/release.apk"))
     }

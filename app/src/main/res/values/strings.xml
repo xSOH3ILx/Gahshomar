@@ -1,6 +1,6 @@
 <resources>
-    <!-- Permanent product name. Change only on the user's direct instruction. -->
-    <string name="app_name">SOH3IL</string>
+    <!-- Permanent product name. Changed per user's direct instruction. -->
+    <string name="app_name">گاه‌شمار خورشیدی</string>
     <string name="shortcut_add_reminder_short">یادآور جدید</string>
     <string name="shortcut_add_reminder_long">افزودن یادآور جدید</string>
     <string name="shortcut_today_short">امروز</string>
@@ -14,9 +14,9 @@
     <string name="widget_sample_other_dates">8 نوامبر • ۲۷ جمادی‌الاول</string>
     <string name="widget_sample_occasion">بدون مناسبت تعطیل</string>
     <string name="widget_sample_reminders">بدون یادآور برای امروز</string>
-    <string name="widget_daily_label">تقویم روزانه SOH3IL</string>
-    <string name="widget_compact_label">تاریخ کوچک SOH3IL</string>
-    <string name="widget_month_label">تقویم ماهانه SOH3IL</string>
+    <string name="widget_daily_label">تقویم روزانه گاه‌شمار خورشیدی</string>
+    <string name="widget_compact_label">تاریخ کوچک گاه‌شمار خورشیدی</string>
+    <string name="widget_month_label">تقویم ماهانه گاه‌شمار خورشیدی</string>
     <string name="widget_weekday_0">ش</string>
     <string name="widget_weekday_1">ی</string>
     <string name="widget_weekday_2">د</string>
@@ -55,8 +55,8 @@
     <string name="widget_preview_day_29">۲۹</string>
     <string name="widget_preview_day_30">۳۰</string>
     <string name="widget_preview_day_31">۳۱</string>
-    <string name="widget_week_label">هفتهٔ SOH3IL</string>
-    <string name="widget_agenda_label">دستور کار SOH3IL</string>
+    <string name="widget_week_label">هفتهٔ گاه‌شمار خورشیدی</string>
+    <string name="widget_agenda_label">دستور کار گاه‌شمار خورشیدی</string>
     <string name="widget_agenda_empty">در هفت روز آینده یادآوری ندارید</string>
     <string name="widget_add_reminder">افزودن یادآور</string>
     <string name="widget_configure">تنظیم ویجت</string>

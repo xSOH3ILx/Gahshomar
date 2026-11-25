@@ -15,16 +15,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CompareArrows
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,6 +48,7 @@ import com.soh3il.core.jalali.DateConverter
 import com.soh3il.core.jalali.JalaliDate
 import java.time.LocalDate
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateConverterDialog(
     onDismiss: () -> Unit
@@ -86,32 +87,23 @@ fun DateConverterDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            Button(onClick = onDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text("بستن", fontWeight = FontWeight.Bold)
             }
         },
         title = {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.CompareArrows,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-                    Text(
-                        text = "مبدل پیشرفته تاریخ",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp
-                    )
-                }
-                IconButton(onClick = onDismiss) {
-                    Icon(Icons.Default.Close, contentDescription = "بستن")
-                }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.AutoMirrored.Filled.CompareArrows,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                Text(
+                    text = "مبدل پیشرفته تاریخ",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         text = {
@@ -120,23 +112,23 @@ fun DateConverterDialog(
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
             ) {
-                // Source Selector Chips
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = mode == 0,
-                        onClick = { mode = 0 },
-                        label = { Text("ورودی: خورشیدی") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    FilterChip(
-                        selected = mode == 1,
-                        onClick = { mode = 1 },
-                        label = { Text("ورودی: میلادی") },
-                        modifier = Modifier.weight(1f)
-                    )
+                // Source Selector Segmented Row
+                val modes = listOf("ورودی: خورشیدی", "ورودی: میلادی")
+                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    modes.forEachIndexed { index, label ->
+                        SegmentedButton(
+                            selected = mode == index,
+                            onClick = { mode = index },
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                            icon = {}
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = if (mode == index) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -197,7 +189,7 @@ fun DateConverterDialog(
                         OutlinedTextField(
                             value = gDay,
                             onValueChange = { val s = it.toEnglishDigits(); if (s.length <= 2 && s.all { c -> c.isDigit() }) gDay = s },
-                            label = { Text("Day") },
+                            label = { Text("روز") },
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true
@@ -205,7 +197,7 @@ fun DateConverterDialog(
                         OutlinedTextField(
                             value = gMonth,
                             onValueChange = { val s = it.toEnglishDigits(); if (s.length <= 2 && s.all { c -> c.isDigit() }) gMonth = s },
-                            label = { Text("Month") },
+                            label = { Text("ماه") },
                             modifier = Modifier.weight(1f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true
@@ -213,7 +205,7 @@ fun DateConverterDialog(
                         OutlinedTextField(
                             value = gYear,
                             onValueChange = { val s = it.toEnglishDigits(); if (s.length <= 4 && s.all { c -> c.isDigit() }) gYear = s },
-                            label = { Text("Year") },
+                            label = { Text("سال") },
                             modifier = Modifier.weight(1.5f),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                             singleLine = true

@@ -35,7 +35,7 @@
    - Text color for selected cells must be `Color.White`.
 
 7. **APP BRANDING & TYPOGRAPHY**:
-   - App name is strictly `SOH3IL` and may change only on the user's direct instruction.
+   - App name is strictly `گاه‌شمار خورشیدی` (updated from `SOH3IL` per the user's direct instruction) and may change only on the user's direct instruction.
    - All numbers presented in Persian context must use `.toPersianDigits()`.
    - Persian & Arabic numeral input in all dialogs and text fields must use `toStandardDigits()` / `toEnglishDigits()` / `toIntStandardOrNull()` to ensure resilience across Iranian and Arabic keyboards.
 

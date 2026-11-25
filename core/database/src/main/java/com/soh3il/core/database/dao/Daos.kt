@@ -42,6 +42,9 @@ interface ReminderDao {
 
     @Query("DELETE FROM reminders WHERE id = :id")
     suspend fun deleteReminderById(id: Long)
+
+    @Query("UPDATE reminders SET showCountdown = :showCountdown WHERE id = :id")
+    suspend fun setReminderCountdown(id: Long, showCountdown: Boolean)
 }
 
 @Dao

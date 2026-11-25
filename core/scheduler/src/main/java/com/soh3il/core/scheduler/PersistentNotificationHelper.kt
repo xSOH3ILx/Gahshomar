@@ -33,13 +33,16 @@ import kotlinx.coroutines.launch
 
 object PersistentNotificationHelper {
 
-    const val CHANNEL_ID = "persistent_date_channel"
+    private const val LEGACY_CHANNEL_ID = "persistent_date_channel"
+    const val CHANNEL_ID = "persistent_date_channel_v2"
     private const val CHANNEL_NAME = "نوار اعلان دائمی تاریخ"
     const val NOTIFICATION_ID = 2001
     const val EXTRA_DATE_JDN = "soh3il.date.jdn"
     private val refreshScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val renderLock = Any()
     private var generation = 0L
+    @Volatile
+    private var lastKnownReminders: List<Reminder>? = null
     const val EXTRA_OPEN_ADD_REMINDER = "extra_open_add_reminder"
     const val ACTION_OPEN_ADD_REMINDER = "com.soh3il.calendar.action.OPEN_ADD_REMINDER"
 
@@ -56,16 +59,41 @@ object PersistentNotificationHelper {
 
     fun createNotificationChannel(context: Context) {
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val existing = notificationManager.getNotificationChannel(CHANNEL_ID)
+        val legacy = notificationManager.getNotificationChannel(LEGACY_CHANNEL_ID)
+        val legacyBlocked = legacy != null && legacy.importance == NotificationManager.IMPORTANCE_NONE
+        if (existing == null && legacyBlocked) {
+            // Respect explicit system-level channel block from earlier versions.
+            val blockedChannel = NotificationChannel(
+                CHANNEL_ID,
+                CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_NONE
+            ).apply {
+                description = "نمایش پیوسته تاریخ روز خورشیدی و رویدادها در نوار وضعیت، صفحه قفل و AOD"
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+            notificationManager.createNotificationChannel(blockedChannel)
+            notificationManager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+            return
+        }
+        if (legacy != null) {
+            notificationManager.deleteNotificationChannel(LEGACY_CHANNEL_ID)
+        }
         val channel = NotificationChannel(
             CHANNEL_ID,
             CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_DEFAULT
         ).apply {
-                description = "نمایش پیوسته تاریخ روز خورشیدی و رویدادها در نوار وضعیت، صفحه قفل و AOD"
+            description = "نمایش پیوسته تاریخ روز خورشیدی و رویدادها در نوار وضعیت، صفحه قفل و AOD"
             setShowBadge(true)
+            setSound(null, null)
             enableVibration(false)
             enableLights(false)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            setBypassDnd(true)
         }
         notificationManager.createNotificationChannel(channel)
     }
@@ -96,7 +124,39 @@ object PersistentNotificationHelper {
     fun updateNotification(context: Context, reminders: List<Reminder>?, summaryUnavailable: Boolean = false) {
         synchronized(renderLock) {
             generation++
+            if (reminders != null && !summaryUnavailable) {
+                lastKnownReminders = reminders
+            }
             renderNotification(context, reminders, summaryUnavailable)
+        }
+    }
+
+    fun hasCachedReminders(): Boolean = lastKnownReminders != null
+
+    fun buildForegroundNotification(context: Context): Notification? {
+        if (!UserPreferences.isPersistentNotificationEnabled(context)) return null
+        createNotificationChannel(context)
+        return buildNotification(context, lastKnownReminders)
+    }
+
+    fun restoreIfMissing(context: Context) {
+        if (!UserPreferences.isPersistentNotificationEnabled(context)) return
+        if (needsRefresh(context)) {
+            synchronized(renderLock) {
+                if (needsRefresh(context)) {
+                    renderNotification(context.applicationContext, lastKnownReminders)
+                }
+            }
+            if (lastKnownReminders == null) {
+                updateNotification(context)
+            }
+        }
+    }
+
+    fun repostCachedNotification(context: Context) {
+        if (!UserPreferences.isPersistentNotificationEnabled(context)) return
+        synchronized(renderLock) {
+            renderNotification(context.applicationContext, lastKnownReminders)
         }
     }
 
@@ -108,12 +168,24 @@ object PersistentNotificationHelper {
             notificationManager.cancel(NOTIFICATION_ID)
             return
         }
-        if (!NotificationHelper.canPostNotifications(context)) {
+        createNotificationChannel(context)
+        if (!NotificationHelper.canPostNotifications(context, CHANNEL_ID)) {
             return
         }
 
-        createNotificationChannel(context)
+        val notification = buildNotification(context, reminders, summaryUnavailable)
+        try {
+            notificationManager.notify(NOTIFICATION_ID, notification)
+        } catch (error: SecurityException) {
+            Log.w("PersistentDate", "Date notification permission unavailable")
+        }
+    }
 
+    private fun buildNotification(
+        context: Context,
+        reminders: List<Reminder>?,
+        summaryUnavailable: Boolean = false
+    ): Notification {
         val today = JalaliDate.now()
         val rlm = "\u200F" // نویسه اجباری راست‌چین یونیکد (Right-To-Left Mark)
 
@@ -240,16 +312,18 @@ object PersistentNotificationHelper {
                     .also { style -> notificationLines.forEach(style::addLine) }
             )
             .setOngoing(true)
+            .setAutoCancel(false)
             .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setVisibility(
-                if (UserPreferences.isLockscreenCalendarEnabled(context)) {
+                if (showOnLockscreen) {
                     NotificationCompat.VISIBILITY_PUBLIC
                 } else {
                     NotificationCompat.VISIBILITY_PRIVATE
                 }
             )
             .setCategory(NotificationCompat.CATEGORY_STATUS)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .setContentIntent(contentPendingIntent)
@@ -269,19 +343,19 @@ object PersistentNotificationHelper {
             .setContentText(if (showOnLockscreen) shortSummary else "محتوای تقویم پنهان است")
             .setCategory(NotificationCompat.CATEGORY_STATUS)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .setOngoing(true)
+            .setAutoCancel(false)
             .setSilent(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false)
             .build()
+        publicVersion.flags = publicVersion.flags or Notification.FLAG_ONGOING_EVENT or Notification.FLAG_NO_CLEAR
         builder.setPublicVersion(publicVersion)
 
         val notification = builder.build()
-        try {
-            notificationManager.notify(NOTIFICATION_ID, notification)
-        } catch (error: SecurityException) {
-            Log.w("PersistentDate", "Date notification permission unavailable")
-        }
+        notification.flags = notification.flags or Notification.FLAG_ONGOING_EVENT or Notification.FLAG_NO_CLEAR
+        return notification
     }
 
     /** A slow earlier database read must never overwrite a newer refresh. */
@@ -293,7 +367,12 @@ object PersistentNotificationHelper {
 
     fun finishRefresh(context: Context, ticket: Long, reminders: List<Reminder>?, unavailable: Boolean = false) {
         synchronized(renderLock) {
-            if (ticket == generation) renderNotification(context.applicationContext, reminders, unavailable)
+            if (ticket == generation) {
+                if (reminders != null && !unavailable) {
+                    lastKnownReminders = reminders
+                }
+                renderNotification(context.applicationContext, reminders, unavailable)
+            }
         }
     }
 
@@ -321,14 +400,22 @@ object PersistentNotificationHelper {
 
     fun needsRefresh(context: Context): Boolean {
         if (!UserPreferences.isPersistentNotificationEnabled(context)) return false
+        createNotificationChannel(context)
+        if (!NotificationHelper.canPostNotifications(context, CHANNEL_ID)) return false
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val current = manager.activeNotifications.firstOrNull { it.id == NOTIFICATION_ID }
-        return current?.notification?.extras?.getLong(EXTRA_DATE_JDN, Long.MIN_VALUE) != JalaliDate.now().toJdn()
+        val current = manager.activeNotifications.firstOrNull { it.id == NOTIFICATION_ID } ?: return true
+        val notification = current.notification
+        if (notification.extras?.getLong(EXTRA_DATE_JDN, Long.MIN_VALUE) != JalaliDate.now().toJdn()) return true
+        if (notification.channelId != CHANNEL_ID) return true
+        if ((notification.flags and Notification.FLAG_NO_CLEAR) == 0) return true
+        if (notification.deleteIntent == null) return true
+        return false
     }
 
     fun cancelNotification(context: Context) {
         synchronized(renderLock) {
             generation++
+            lastKnownReminders = null
             val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.cancel(NOTIFICATION_ID)
         }

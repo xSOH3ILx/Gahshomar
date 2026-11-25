@@ -10,18 +10,19 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,11 +33,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.soh3il.core.database.preferences.UserPreferences
 import com.soh3il.core.designsystem.components.FarsiCard
+import com.soh3il.core.designsystem.components.FarsiSwitchRow
 import com.soh3il.feature.settings.components.SettingsSectionHeader
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolsSection(
     onOpenDateConverter: () -> Unit,
@@ -69,29 +71,28 @@ fun ToolsSection(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     Text(
                         text = "مبدل پیشرفته تاریخ",
-                        fontSize = 15.sp,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = "تبدیل بلادرنگ تاریخ‌های خورشیدی، میلادی و قمری، تحلیل کبیسه و حیوان سال.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 17.sp
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
                 Button(
                     onClick = onOpenDateConverter,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
-                    Text("باز کردن", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("باز کردن", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                     Spacer(modifier = Modifier.width(4.dp))
                     Icon(
-                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                        imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
@@ -103,13 +104,13 @@ fun ToolsSection(
             // Universal Calendar Backup & Transfer (ICS)
             Text(
                 text = "پشتیبان‌گیری و انتقال تقویم (فرمت جهانی iCalendar / ICS):",
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                text = "تکرار خورشیدی در فایل مخصوص SOH3IL حفظ می‌شود؛ سایر تقویم‌ها فقط نوبت اول آن را می‌بینند. بعضی قوانین ICS خارجی پشتیبانی نمی‌شوند.",
-                fontSize = 11.sp,
+                text = "تکرار خورشیدی در فایل خروجی گاه‌شمار خورشیدی حفظ می‌شود؛ سایر تقویم‌ها فقط نوبت اول آن را می‌بینند. بعضی قوانین ICS خارجی پشتیبانی نمی‌شوند.",
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp, bottom = 10.dp)
             )
@@ -121,21 +122,21 @@ fun ToolsSection(
                 Button(
                     onClick = { onExportIcsClick?.invoke() },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("صدور ICS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("صدور ICS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
 
                 OutlinedButton(
                     onClick = { importIcsLauncher.launch("text/calendar") },
                     modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 ) {
                     Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("ورود ICS", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("ورود ICS", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -144,54 +145,49 @@ fun ToolsSection(
             // Auto backup toggle
             val context = androidx.compose.ui.platform.LocalContext.current
             var autoBackup by remember { mutableStateOf(UserPreferences.isAutoBackupEnabled(context)) }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "پشتیبان‌گیری خودکار روزانه",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "هر ۲۴ ساعت یک فایل ICS در پوشه اختصاصی اپ (Android/data) ذخیره می‌شود؛ ۷ نسخه آخر نگه داشته می‌شود.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 16.sp
-                    )
+            FarsiSwitchRow(
+                title = "پشتیبان‌گیری خودکار روزانه",
+                subtitle = "هر ۲۴ ساعت یک فایل ICS در پوشه اختصاصی اپ (Android/data) ذخیره می‌شود؛ ۷ نسخه آخر نگه داشته می‌شود.",
+                checked = autoBackup,
+                onCheckedChange = { enabled ->
+                    autoBackup = enabled
+                    onAutoBackupToggled?.invoke(enabled)
                 }
-                Switch(
-                    checked = autoBackup,
-                    onCheckedChange = { enabled ->
-                        autoBackup = enabled
-                        onAutoBackupToggled?.invoke(enabled)
-                    }
-                )
-            }
+            )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Default calendar for new reminders
             var defaultCalendar by remember { mutableStateOf(UserPreferences.getDefaultCalendar(context)) }
+            val calendarOptions = listOf("JALALI" to "جلالی", "GREGORIAN" to "میلادی", "HIJRI" to "قمری")
             Text(
                 text = "تقویم پیش‌فرض رویدادهای جدید:",
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(top = 6.dp)) {
-                listOf("JALALI" to "جلالی", "GREGORIAN" to "میلادی", "HIJRI" to "قمری").forEach { (name, label) ->
-                    FilterChip(
-                        selected = defaultCalendar == name,
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp)
+            ) {
+                calendarOptions.forEachIndexed { index, (name, label) ->
+                    val selected = defaultCalendar == name
+                    SegmentedButton(
+                        selected = selected,
                         onClick = {
                             defaultCalendar = name
                             onDefaultCalendarSelected?.invoke(name)
                         },
-                        label = { Text(label, fontSize = 12.sp) }
-                    )
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = calendarOptions.size),
+                        icon = {}
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
                 }
             }
 
@@ -199,13 +195,13 @@ fun ToolsSection(
 
             Text(
                 text = "همگام‌سازی با تقویم دستگاه و Google Calendar",
-                fontSize = 12.sp,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = "یادآورهای فعال را ثبت یا به‌روزرسانی می‌کند؛ ویرایش‌های دستی همان رویدادها ممکن است جایگزین شوند. موارد حذف‌شده یا غیرفعال برای تأیید حذف نمایش داده می‌شوند.",
-                fontSize = 11.sp,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 2.dp, bottom = 8.dp)
             )
@@ -213,11 +209,11 @@ fun ToolsSection(
                 onClick = { onSyncCalendarClick?.invoke() },
                 enabled = onSyncCalendarClick != null,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 Icon(Icons.Default.DateRange, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(6.dp))
-                Text("همگام‌سازی اکنون", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("همگام‌سازی اکنون", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -21,6 +21,7 @@ internal class ReminderDraftState(
     var title by mutableStateOf(existingReminder?.title ?: "")
     var description by mutableStateOf(existingReminder?.description ?: "")
     var reminderEnabled by mutableStateOf(existingReminder?.isEnabled ?: true)
+    var showCountdown by mutableStateOf(existingReminder?.showCountdown ?: false)
     var selectedHour by mutableIntStateOf(existingReminder?.hour ?: 9)
     var selectedMinute by mutableIntStateOf(existingReminder?.minute ?: 0)
     var selectedColorHex by mutableStateOf(existingReminder?.colorHex ?: "#2563EB")
@@ -70,6 +71,7 @@ internal class ReminderDraftState(
                     "title" to it.title,
                     "description" to it.description,
                     "reminderEnabled" to it.reminderEnabled,
+                    "showCountdown" to it.showCountdown,
                     "selectedHour" to it.selectedHour,
                     "selectedMinute" to it.selectedMinute,
                     "selectedColorHex" to it.selectedColorHex,
@@ -96,6 +98,7 @@ internal class ReminderDraftState(
                     title = values["title"] as? String ?: ""
                     description = values["description"] as? String ?: ""
                     reminderEnabled = values["reminderEnabled"] as? Boolean ?: true
+                    showCountdown = values["showCountdown"] as? Boolean ?: false
                     selectedHour = values["selectedHour"] as? Int ?: 9
                     selectedMinute = values["selectedMinute"] as? Int ?: 0
                     selectedColorHex = values["selectedColorHex"] as? String ?: "#2563EB"

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# SOH3IL local CI/CD pipeline (replaces .github/workflows/build-and-release.yml)
+# Gahshomar local CI/CD pipeline (replaces .github/workflows/build-and-release.yml)
 #
 # Usage:
 #   ./cicd.sh              # full pipeline: test -> lint -> debug build -> package
@@ -64,20 +64,20 @@ stage_release() {
 stage_package() {
     local version dist
     version=$(app_version)
-    dist="dist/SOH3IL-v${version}"
+    dist="dist/Gahshomar-v${version}"
     mkdir -p "$dist"
 
     for apk in app/build/outputs/apk/release/*.apk; do
         [ -f "$apk" ] || continue
         filename=$(basename "$apk")
         if [[ "$filename" == *"arm64-v8a"* ]]; then
-            cp "$apk" "$dist/SOH3IL-v${version}-arm64-v8a.apk"
+            cp "$apk" "$dist/Gahshomar-v${version}-arm64-v8a.apk"
         elif [[ "$filename" == *"armeabi-v7a"* ]]; then
-            cp "$apk" "$dist/SOH3IL-v${version}-armeabi-v7a.apk"
+            cp "$apk" "$dist/Gahshomar-v${version}-armeabi-v7a.apk"
         elif [[ "$filename" == *"x86_64"* ]]; then
-            cp "$apk" "$dist/SOH3IL-v${version}-x86_64.apk"
+            cp "$apk" "$dist/Gahshomar-v${version}-x86_64.apk"
         elif [[ "$filename" == *"universal"* ]]; then
-            cp "$apk" "$dist/SOH3IL-v${version}-universal.apk"
+            cp "$apk" "$dist/Gahshomar-v${version}-universal.apk"
         else
             fail "Unrecognized APK artifact: $filename"
         fi

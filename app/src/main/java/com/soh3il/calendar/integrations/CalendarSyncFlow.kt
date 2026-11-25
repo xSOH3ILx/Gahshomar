@@ -35,7 +35,7 @@ internal fun rememberCalendarSyncAction(context: Context, db: Soh3ilDatabase,
         AlertDialog(
             onDismissRequest = { confirmSync = false },
             title = { Text("تأیید به‌روزرسانی تقویم") },
-            text = { Text("این عملیات عنوان، توضیح، تاریخ و تکرار رویدادهای دارای نشانگر SOH3IL را با اطلاعات برنامه جایگزین می‌کند. ویرایش‌های دستی همین موارد در تقویم دستگاه ممکن است از بین بروند. حذف رویدادهای قدیمی بعداً جداگانه نمایش داده می‌شود و تأیید مستقل می‌خواهد.") },
+            text = { Text("این عملیات عنوان، توضیح، تاریخ و تکرار رویدادهای ثبت‌شده توسط گاه‌شمار خورشیدی را با اطلاعات برنامه جایگزین می‌کند. ویرایش‌های دستی همین موارد در تقویم دستگاه ممکن است از بین بروند. حذف رویدادهای قدیمی بعداً جداگانه نمایش داده می‌شود و تأیید مستقل می‌خواهد.") },
             dismissButton = { TextButton(onClick = { confirmSync = false }) { Text("انصراف") } },
             confirmButton = { TextButton(onClick = {
                 confirmSync = false

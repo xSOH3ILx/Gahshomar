@@ -7,12 +7,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,7 +19,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,6 +47,8 @@ import com.soh3il.core.model.Occasion
 import com.soh3il.core.model.RecurrenceType
 import com.soh3il.core.model.Reminder
 import com.soh3il.feature.calendar.components.CalendarSearchBar
+import com.soh3il.feature.calendar.components.EventCountdownsCard
+import com.soh3il.feature.calendar.components.computeEventCountdowns
 
 data class AgendaDayItem(
     val date: JalaliDate,
@@ -63,6 +64,9 @@ fun AgendaView(
     reminders: List<Reminder>,
     additionalOccasions: List<Occasion> = emptyList(),
     onReminderClick: (Reminder) -> Unit,
+    onToggleReminderCountdown: ((Reminder) -> Unit)? = null,
+    birthJdn: Long? = null,
+    onSetBirthDate: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -75,6 +79,21 @@ fun AgendaView(
     // Generate agenda items for the next 45 days with real-time query and category filtering
     val agendaItems = remember(today, reminders, additionalOccasions, normalizedQuery, selectedCategoryColor) {
         buildAgendaItems(today, reminders, additionalOccasions, normalizedQuery, selectedCategoryColor)
+    }
+
+    val selectableReminders = remember(reminders) {
+        reminders.filter { it.isEnabled }
+    }
+
+    val countdownItems = remember(today, reminders, normalizedQuery, selectedCategoryColor) {
+        computeEventCountdowns(today, reminders).filter { item ->
+            val matchesCategory = selectedCategoryColor == null ||
+                item.reminder.colorHex.equals(selectedCategoryColor, ignoreCase = true)
+            val matchesQuery = normalizedQuery.isEmpty() ||
+                item.reminder.title.toEnglishDigits().lowercase().contains(normalizedQuery) ||
+                item.reminder.description.toEnglishDigits().lowercase().contains(normalizedQuery)
+            matchesCategory && matchesQuery
+        }
     }
 
     Column(modifier = modifier.fillMaxSize()) {
@@ -95,7 +114,7 @@ fun AgendaView(
             )
         }
 
-        if (agendaItems.isEmpty()) {
+        if (agendaItems.isEmpty() && countdownItems.isEmpty()) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -119,20 +138,42 @@ fun AgendaView(
                 }
             }
         } else {
-            val navBarBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
                     start = 16.dp,
                     end = 16.dp,
                     top = 4.dp,
-                    bottom = 88.dp + navBarBottom
+                    bottom = 16.dp
                 )
             ) {
+                item(key = "event_countdowns_card") {
+                    EventCountdownsCard(
+                        today = today,
+                        countdownItems = countdownItems,
+                        selectableReminders = selectableReminders,
+                        onReminderClick = onReminderClick,
+                        onToggleReminderCountdown = onToggleReminderCountdown
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                if (onSetBirthDate != null && normalizedQuery.isEmpty() && selectedCategoryColor == null) {
+                    item(key = "age_countdown_card") {
+                        AgeCountdownCard(
+                            state = remember(today, birthJdn, reminders) {
+                                computeAgeCountdown(today, birthJdn, reminders)
+                            },
+                            onSetBirth = onSetBirthDate,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
                 items(agendaItems) { item ->
                     AgendaDaySection(
                         item = item,
-                        onReminderClick = onReminderClick
+                        onReminderClick = onReminderClick,
+                        onToggleReminderCountdown = onToggleReminderCountdown
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -144,7 +185,8 @@ fun AgendaView(
 @Composable
 fun AgendaDaySection(
     item: AgendaDayItem,
-    onReminderClick: (Reminder) -> Unit
+    onReminderClick: (Reminder) -> Unit,
+    onToggleReminderCountdown: ((Reminder) -> Unit)? = null
 ) {
     val date = item.date
     val isFriday = date.dayOfWeek == 7
@@ -268,6 +310,23 @@ fun AgendaDaySection(
                                 fontSize = 12.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                        }
+                        if (rem.isEnabled && onToggleReminderCountdown != null) {
+                            IconButton(
+                                onClick = { onToggleReminderCountdown(rem) },
+                                modifier = Modifier.size(48.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Timer,
+                                    contentDescription = if (rem.showCountdown) "حذف از شمارش معکوس" else "افزودن به شمارش معکوس",
+                                    tint = if (rem.showCountdown) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                    },
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                         Icon(
                             imageVector = Icons.Default.Edit,

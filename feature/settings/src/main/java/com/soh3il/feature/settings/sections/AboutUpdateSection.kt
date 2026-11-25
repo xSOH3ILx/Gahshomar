@@ -2,6 +2,8 @@ package com.soh3il.feature.settings.sections
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,15 +12,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.OpenInBrowser
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,14 +37,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.soh3il.core.designsystem.components.FarsiCard
 import com.soh3il.core.designsystem.utils.toPersianDigits
 import com.soh3il.core.updater.UpdateChecker
 import com.soh3il.core.updater.UpdateInfo
 import com.soh3il.feature.settings.components.SettingsSectionHeader
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
+
+private const val OFFICIAL_REPO_URL = "https://github.com/xSOH3ILx/Gahshomar"
 
 @Composable
 fun AboutUpdateSection(
@@ -52,9 +58,9 @@ fun AboutUpdateSection(
     var updateCheckMessage by remember { mutableStateOf<String?>(null) }
 
     SettingsSectionHeader(
-        title = "درباره برنامه و به‌روزرسانی",
-        subtitle = "اطلاعات نسخه و صفحه انتشار رسمی SOH3IL",
-        icon = Icons.Default.SystemUpdate
+        title = "درباره برنامه",
+        subtitle = "معرفی گاه‌شمار خورشیدی، توسعه‌دهنده و بررسی به‌روزرسانی",
+        icon = Icons.Default.Info
     )
     Spacer(modifier = Modifier.height(6.dp))
 
@@ -62,30 +68,87 @@ fun AboutUpdateSection(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "گاه‌شمار و یادآور SOH3IL",
-                    fontSize = 15.sp,
+                    text = "گاه‌شمار خورشیدی",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    text = "نسخه ${currentVersionName.toPersianDigits()}",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                Box(
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "نسخه ${currentVersionName.toPersianDigits()}",
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
             }
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             Text(
-                text = "طراحی و توسعه‌یافته با کاتلین خالص و Jetpack Compose برای استفاده شخصی و خانوادگی؛ آزاد و متن‌باز برای عموم علاقه‌مندان.",
-                fontSize = 11.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                lineHeight = 18.sp,
-                modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
+                text = "گاه‌شمار خورشیدی یک تقویم و دستیار یادآوری دقیق و تمام‌بومی برای اندروید است که با موتور زمان‌بندی جلالی بدون خطای ماه‌های ۲۹ تا ۳۱ روزه، اعلان دائمی تاریخ در نوار وضعیت و صفحه‌قفل، شمارش معکوس رویدادها، ویجت‌های صفحه اصلی و مبدل سه‌گانه تاریخ طراحی شده است.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(MaterialTheme.shapes.medium)
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "توسعه‌دهنده",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = "سهیل وطن‌دوست (Soheil VatanDoust)",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "تمامی حقوق این برنامه محفوظ است. کپی یا استفاده مستقل از کدها مجاز نیست؛ علاقه‌مندان می‌توانند برای بهبود و مشارکت، پیشنهادها و Pull Request خود را مستقیماً در مخزن رسمی پروژه ثبت کنند.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             Button(
                 onClick = {
@@ -99,7 +162,7 @@ fun AboutUpdateSection(
                             updateCheckMessage = if (result.hasUpdate) {
                                 "نسخه جدید ${result.latestVersionName.toPersianDigits()} در صفحه انتشار رسمی موجود است."
                             } else {
-                                "شما از آخرین نسخه SOH3IL استفاده می‌کنید."
+                                "شما از آخرین نسخه گاه‌شمار خورشیدی استفاده می‌کنید."
                             }
                         } catch (error: CancellationException) {
                             throw error
@@ -112,7 +175,7 @@ fun AboutUpdateSection(
                 },
                 enabled = !isCheckingUpdate,
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             ) {
                 if (isCheckingUpdate) {
                     CircularProgressIndicator(
@@ -121,16 +184,38 @@ fun AboutUpdateSection(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("در حال بررسی نسخه...", fontSize = 13.sp)
+                    Text("در حال بررسی نسخه...", style = MaterialTheme.typography.labelLarge)
                 } else {
-                    Text("بررسی نسخه جدید", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Icon(
+                        imageVector = Icons.Default.SystemUpdate,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("بررسی نسخه جدید", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedButton(
+                onClick = { UpdateChecker.openReleasePage(context, OFFICIAL_REPO_URL) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Code,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("مشارکت و مخزن رسمی گیتهاب", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
             }
 
             updateCheckMessage?.let { message ->
                 Text(
                     text = message,
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodySmall,
                     color = if (updateInfo?.hasUpdate == true) {
                         MaterialTheme.colorScheme.primary
                     } else {
@@ -145,7 +230,7 @@ fun AboutUpdateSection(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(MaterialTheme.shapes.medium)
                         .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                         .padding(12.dp)
                 ) {
@@ -158,16 +243,15 @@ fun AboutUpdateSection(
                         )
                         Text(
                             text = "تغییرات نسخه ${info.latestVersionName.toPersianDigits()}:",
-                            fontSize = 13.sp,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(start = 6.dp)
                         )
                     }
                     Text(
                         text = info.changelog,
-                        fontSize = 12.sp,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        lineHeight = 18.sp,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
@@ -181,7 +265,7 @@ fun AboutUpdateSection(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("مشاهده صفحه انتشار رسمی", fontSize = 12.sp)
+                        Text("مشاهده صفحه انتشار رسمی", style = MaterialTheme.typography.labelLarge)
                     }
                 }
             }

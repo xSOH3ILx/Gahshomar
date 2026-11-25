@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -54,12 +55,12 @@ fun CalendarSearchBar(
             onValueChange = onQueryChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp),
+                .heightIn(min = 56.dp),
             placeholder = {
                 Text(
                     text = "جستجو در یادآورها، مناسبت‌ها و تعطیلات...",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             leadingIcon = {
@@ -83,7 +84,7 @@ fun CalendarSearchBar(
                 }
             },
             singleLine = true,
-            shape = RoundedCornerShape(14.dp),
+            shape = MaterialTheme.shapes.medium,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                 unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,
@@ -110,11 +111,11 @@ fun CalendarSearchBar(
                 label = {
                     Text(
                         text = "همه",
-                        fontSize = 11.sp,
+                        style = MaterialTheme.typography.labelMedium,
                         fontWeight = if (isAllSelected) FontWeight.Bold else FontWeight.Normal
                     )
                 },
-                shape = RoundedCornerShape(8.dp),
+                shape = MaterialTheme.shapes.small,
                 colors = FilterChipDefaults.filterChipColors(
                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
@@ -137,7 +138,7 @@ fun CalendarSearchBar(
                     label = {
                         Text(
                             text = category.nameFa,
-                            fontSize = 11.sp,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                         )
                     },
@@ -149,10 +150,10 @@ fun CalendarSearchBar(
                                 .background(catColor)
                         )
                     },
-                    shape = RoundedCornerShape(8.dp),
+                    shape = MaterialTheme.shapes.small,
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = catColor.copy(alpha = 0.15f),
-                        selectedLabelColor = MaterialTheme.colorScheme.onSurface
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             }

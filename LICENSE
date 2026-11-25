@@ -1,21 +1,40 @@
-MIT License
+Proprietary Source-Available License — Contribution-Only (All Rights Reserved)
 
-Copyright (c) 2026 Soheil (xSOH3ILx)
+Copyright (c) 2026 Soheil VatanDoust (xSOH3ILx). All Rights Reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. Ownership
+This software, including all source code, Kotlin/XML files, UI designs, icons,
+graphics, documentation, build scripts, and compiled binaries (collectively, the
+"Software"), is the exclusive intellectual property of Soheil VatanDoust.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. Strict Restrictions (No Copying, Reuse, or External Distribution)
+Except as expressly permitted in Section 3 below, you may NOT, in whole or in part:
+  a) Copy, extract, clone for external use, or reuse any portion of the Software's
+     source code, algorithms, UI components, resources, or binaries in any other
+     project, application, library, or repository (commercial or non-commercial).
+  b) Distribute, publish, sublicense, sell, rent, lease, or rebrand the Software
+     or any modified or derivative version of it outside the official repository.
+  c) Create standalone forks, re-packaged builds, or derivative works for public or
+     private distribution.
 
+3. Permitted Viewing and Direct Contribution
+You are permitted to view and inspect the source code on the official GitHub
+repository (https://github.com/xSOH3ILx/Gahshomar) and build it locally solely for
+personal evaluation or for preparing contributions directly back to this official
+repository via GitHub Issues and Pull Requests.
+Any GitHub fork created for the sole technical purpose of opening a Pull Request
+to https://github.com/xSOH3ILx/Gahshomar must not be used to publish independent
+releases or redistribute the code elsewhere.
+
+4. Contributor Grant
+By submitting any code, patch, bug fix, or Pull Request to the official
+repository, you grant Soheil VatanDoust a perpetual, worldwide, irrevocable,
+non-exclusive, royalty-free license to use, modify, incorporate, and distribute
+your contribution as part of this Software under the terms of this License.
+
+5. No Warranty
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE COPYRIGHT
+HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY ARISING FROM OR IN
+CONNECTION WITH THE SOFTWARE.

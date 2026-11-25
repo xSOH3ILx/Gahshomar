@@ -7,8 +7,9 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
@@ -44,6 +45,9 @@ fun CustomRecurrenceDialog(
     onConfirm: (interval: Int) -> Unit
 ) {
     var intervalInput by remember { mutableStateOf(initialInterval.toString()) }
+    var showError by remember { mutableStateOf(false) }
+    val parsedInterval = intervalInput.toIntStandardOrNull()
+    val isInvalid = parsedInterval == null || parsedInterval <= 0
     val unitLabel = when (recurrenceType) {
         RecurrenceType.DAILY -> "روز"
         RecurrenceType.WEEKLY -> "هفته"
@@ -84,11 +88,12 @@ fun CustomRecurrenceDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            Button(
+            TextButton(
                 onClick = {
-                    val parsed = intervalInput.toIntStandardOrNull()
-                    if (parsed != null && parsed > 0) {
-                        onConfirm(parsed)
+                    if (isInvalid) {
+                        showError = true
+                    } else {
+                        onConfirm(parsedInterval!!)
                     }
                 }
             ) {
@@ -103,15 +108,15 @@ fun CustomRecurrenceDialog(
         title = {
             Text(
                 text = "تنظیم بازه تکرار گاه‌شمار",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
         },
         text = {
-            Column {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     text = "انتخاب بازه‌های متداول یا وارد کردن عدد دلخواه:",
-                    fontSize = 13.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -126,11 +131,14 @@ fun CustomRecurrenceDialog(
                             val isChosen = intervalInput == presetVal.toString()
                             FilterChip(
                                 selected = isChosen,
-                                onClick = { intervalInput = presetVal.toString() },
+                                onClick = {
+                                    intervalInput = presetVal.toString()
+                                    showError = false
+                                },
                                 label = {
                                     Text(
                                         text = presetName,
-                                        fontSize = 12.sp,
+                                        style = MaterialTheme.typography.labelMedium,
                                         fontWeight = if (isChosen) FontWeight.Bold else FontWeight.Normal
                                     )
                                 },
@@ -138,7 +146,7 @@ fun CustomRecurrenceDialog(
                                     selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
                                     selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 ),
-                                shape = RoundedCornerShape(10.dp)
+                                shape = MaterialTheme.shapes.small
                             )
                         }
                     }
@@ -152,14 +160,19 @@ fun CustomRecurrenceDialog(
                         val standard = input.toEnglishDigits()
                         if (standard.all { it.isDigit() } && standard.length <= 3) {
                             intervalInput = standard
+                            showError = false
                         }
                     },
                     visualTransformation = PersianDigitVisualTransformation(),
                     label = { Text("عدد بازه دلخواه (به $unitLabel)") },
+                    isError = showError && isInvalid,
+                    supportingText = if (showError && isInvalid) {
+                        { Text("عدد معتبر بزرگ‌تر از صفر وارد کنید") }
+                    } else null,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp)
+                    shape = MaterialTheme.shapes.medium
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))

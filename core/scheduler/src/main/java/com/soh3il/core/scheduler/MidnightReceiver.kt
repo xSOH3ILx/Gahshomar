@@ -6,10 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.soh3il.core.database.Soh3ilDatabase
+import com.soh3il.core.database.preferences.UserPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.TimeoutCancellationException
@@ -30,6 +32,7 @@ class MidnightReceiver : BroadcastReceiver() {
         private const val TAG = "MidnightReceiver"
         const val ACTION_MIDNIGHT_TICK = "com.soh3il.calendar.ACTION_MIDNIGHT_TICK"
         const val ACTION_NOTIFICATION_DISMISSED = "com.soh3il.calendar.ACTION_NOTIFICATION_DISMISSED"
+        const val ACTION_KEEP_ALIVE_WATCHDOG = MidnightScheduler.ACTION_KEEP_ALIVE_WATCHDOG
         const val ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED =
             "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED"
         const val ACTION_QUICKBOOT_POWERON = "android.intent.action.QUICKBOOT_POWERON"
@@ -37,7 +40,8 @@ class MidnightReceiver : BroadcastReceiver() {
 
         private val INTERNAL_ACTIONS = setOf(
             ACTION_MIDNIGHT_TICK,
-            ACTION_NOTIFICATION_DISMISSED
+            ACTION_NOTIFICATION_DISMISSED,
+            ACTION_KEEP_ALIVE_WATCHDOG
         )
 
         private val RESCHEDULE_ACTIONS = setOf(
@@ -65,6 +69,11 @@ class MidnightReceiver : BroadcastReceiver() {
                 try {
                     withTimeout(8_500L) {
                         refreshNow(context, action)
+                        if (action == ACTION_NOTIFICATION_DISMISSED && UserPreferences.isPersistentNotificationEnabled(context)) {
+                            // Ensure restoration lands cleanly even if SystemUI was still finishing swipe-dismiss animation.
+                            delay(400L)
+                            PersistentNotificationHelper.repostCachedNotification(context)
+                        }
                     }
                 } catch (error: TimeoutCancellationException) {
                     Log.w(TAG, "Calendar details timed out; date and next alarm were already refreshed")
@@ -85,16 +94,38 @@ class MidnightReceiver : BroadcastReceiver() {
                 Soh3ilDatabase.getInstance(context).reminderDao().getAllActiveRemindersSync().map { it.toDomain() }
             }
         ) {
+            if (action == ACTION_KEEP_ALIVE_WATCHDOG) {
+                if (!UserPreferences.isPersistentNotificationEnabled(context)) {
+                    MidnightScheduler.cancelKeepAliveWatchdog(context)
+                    CalendarKeepAliveService.stop(context)
+                    return
+                }
+                MidnightScheduler.scheduleKeepAliveWatchdog(context)
+                if (!CalendarKeepAliveService.isRunning()) {
+                    CalendarKeepAliveService.start(context)
+                }
+                if (!PersistentNotificationHelper.needsRefresh(context)) {
+                    return
+                }
+            }
+
+            if (action == ACTION_NOTIFICATION_DISMISSED && !UserPreferences.isPersistentNotificationEnabled(context)) {
+                CalendarKeepAliveService.stop(context)
+                PersistentNotificationHelper.cancelNotification(context)
+                return
+            }
+
             MidnightScheduler.scheduleMidnightAlarm(context)
-            // Persian-calendar parity: after boot or a package replacement the
-            // keep-alive service must come back so the notification survives.
+            // Keep-alive service must stay active whenever persistent notification is enabled.
             try {
                 CalendarKeepAliveService.start(context)
             } catch (error: Exception) {
                 Log.w(TAG, "Keep-alive service start refused: ${error.javaClass.simpleName}")
             }
             val notificationTicket = PersistentNotificationHelper.beginRefresh(context)
-            requestWidgetUpdate(context)
+            if (action != ACTION_KEEP_ALIVE_WATCHDOG) {
+                requestWidgetUpdate(context)
+            }
             val activeReminders = try {
                 readReminders()
             } catch (error: CancellationException) {
@@ -106,7 +137,7 @@ class MidnightReceiver : BroadcastReceiver() {
             }
 
             PersistentNotificationHelper.finishRefresh(context, notificationTicket, activeReminders)
-            if (action == ACTION_NOTIFICATION_DISMISSED) return
+            if (action == ACTION_NOTIFICATION_DISMISSED || action == ACTION_KEEP_ALIVE_WATCHDOG) return
 
             if (action in RESCHEDULE_ACTIONS) {
                 AlarmMigration.migrate(context)

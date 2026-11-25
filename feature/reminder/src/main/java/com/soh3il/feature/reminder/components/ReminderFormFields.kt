@@ -26,7 +26,8 @@ fun ReminderFormFields(
     onTitleChange: (String) -> Unit,
     description: String,
     onDescriptionChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    titleError: Boolean = false
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
@@ -34,9 +35,13 @@ fun ReminderFormFields(
             onValueChange = onTitleChange,
             label = { Text("عنوان یادآور") },
             placeholder = { Text("مثال: تمدید بیمه ماشین، سالگرد ازدواج...") },
+            isError = titleError,
+            supportingText = if (titleError) {
+                { Text("لطفاً عنوان یادآور را وارد کنید") }
+            } else null,
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            shape = RoundedCornerShape(14.dp),
+            shape = MaterialTheme.shapes.medium,
             textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Start),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
@@ -60,7 +65,7 @@ fun ReminderFormFields(
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             maxLines = 8,
-            shape = RoundedCornerShape(14.dp),
+            shape = MaterialTheme.shapes.medium,
             textStyle = LocalTextStyle.current.copy(textAlign = TextAlign.Start),
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,

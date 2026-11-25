@@ -49,8 +49,8 @@ fun DayCell(
         // Selected holidays stay red, never blue, per the product color contract.
         isSelected && isHoliday -> FarsiHolidayRed
         isSelected -> MaterialTheme.colorScheme.primary
-        isToday -> MaterialTheme.colorScheme.surfaceVariant
-        isHoliday -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+        isToday -> MaterialTheme.colorScheme.surfaceContainerHigh
+        isHoliday -> MaterialTheme.colorScheme.errorContainer
         else -> Color.Transparent
     }
 
@@ -67,17 +67,18 @@ fun DayCell(
         }
     }
 
+    val shape = MaterialTheme.shapes.medium
     Box(
         modifier = Modifier
             .aspectRatio(1f)
             .heightIn(min = 48.dp)
             .padding(3.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(shape)
             .background(cellBackground)
             .border(
                 width = if (isToday && !isSelected) 1.5.dp else 0.dp,
-                color = if (isHoliday) FarsiHolidayRed else MaterialTheme.colorScheme.primary,
-                shape = RoundedCornerShape(12.dp)
+                color = if (isHoliday) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                shape = shape
             )
             .semantics(mergeDescendants = true) {
                 contentDescription = accessibilityDesc
@@ -93,13 +94,12 @@ fun DayCell(
         ) {
             Text(
                 text = dayNumber.toPersianDigits(),
-                fontSize = 14.sp,
-                lineHeight = 16.sp,
+                style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
                 color = when {
                     isSelected -> Color.White // [LOCKED RULE] White text for selected cells
-                    isHoliday -> MaterialTheme.colorScheme.error
+                    isHoliday -> MaterialTheme.colorScheme.onErrorContainer
                     else -> MaterialTheme.colorScheme.onBackground
                 }
             )

@@ -84,7 +84,7 @@ fun ReminderCategorySection(
                         label = {
                             Text(
                                 text = category.nameFa,
-                                fontSize = 12.sp,
+                                style = MaterialTheme.typography.labelMedium,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         },
@@ -96,10 +96,10 @@ fun ReminderCategorySection(
                                     .background(catColor)
                             )
                         },
-                        shape = RoundedCornerShape(8.dp),
+                        shape = MaterialTheme.shapes.small,
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = catColor.copy(alpha = 0.15f),
-                            selectedLabelColor = MaterialTheme.colorScheme.onSurface
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            selectedLabelColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     )
                 }

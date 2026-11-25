@@ -6,12 +6,16 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import com.soh3il.core.database.preferences.UserPreferences
 import com.soh3il.core.jalali.JalaliDate
 
 object MidnightScheduler {
 
     const val ACTION_MIDNIGHT_TICK = "com.soh3il.calendar.ACTION_MIDNIGHT_TICK"
+    const val ACTION_KEEP_ALIVE_WATCHDOG = "com.soh3il.calendar.ACTION_KEEP_ALIVE_WATCHDOG"
     private const val REQUEST_CODE_MIDNIGHT = 9999
+    private const val REQUEST_CODE_WATCHDOG = 9998
+    private const val DEFAULT_WATCHDOG_INTERVAL_MS = 30L * 60L * 1000L
 
     /**
      * Schedules the next exact midnight tick (00:00:05) to update the persistent notification,
@@ -66,6 +70,56 @@ object MidnightScheduler {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        alarmManager.cancel(pendingIntent)
+        pendingIntent.cancel()
+    }
+
+    /**
+     * Schedules a lightweight watchdog alarm to recover the persistent notification and
+     * keep-alive service if an OEM battery manager or task removal terminated them.
+     */
+    fun scheduleKeepAliveWatchdog(context: Context, delayMillis: Long = DEFAULT_WATCHDOG_INTERVAL_MS) {
+        if (!UserPreferences.isPersistentNotificationEnabled(context)) {
+            cancelKeepAliveWatchdog(context)
+            return
+        }
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val intent = Intent(context, MidnightReceiver::class.java).apply {
+            action = ACTION_KEEP_ALIVE_WATCHDOG
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_WATCHDOG,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val triggerAtMillis = System.currentTimeMillis() + delayMillis.coerceAtLeast(1_000L)
+        try {
+            if (delayMillis <= 60_000L) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()) {
+                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                } else {
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                }
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            }
+        } catch (_: SecurityException) {
+            alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        }
+    }
+
+    fun cancelKeepAliveWatchdog(context: Context) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+        val intent = Intent(context, MidnightReceiver::class.java).apply {
+            action = ACTION_KEEP_ALIVE_WATCHDOG
+        }
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_WATCHDOG,
+            intent,
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        ) ?: return
         alarmManager.cancel(pendingIntent)
         pendingIntent.cancel()
     }

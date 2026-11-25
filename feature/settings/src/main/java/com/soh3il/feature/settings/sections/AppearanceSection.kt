@@ -1,36 +1,30 @@
 package com.soh3il.feature.settings.sections
 
 import android.content.Context
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ColorLens
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.soh3il.core.designsystem.components.FarsiCard
+import com.soh3il.core.designsystem.components.FarsiSwitchRow
 import com.soh3il.core.model.AppTheme
 import com.soh3il.feature.settings.components.SettingsSectionHeader
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppearanceSection(
     context: Context,
@@ -51,110 +45,59 @@ fun AppearanceSection(
     FarsiCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
             val themeOptions = listOf(
-                AppTheme.SYSTEM to "هماهنگ با سیستم (خودکار)",
-                AppTheme.LIGHT to "پوسته روشن",
-                AppTheme.DARK to "پوسته تاریک"
+                AppTheme.SYSTEM to "خودکار",
+                AppTheme.LIGHT to "روشن",
+                AppTheme.DARK to "تاریک"
             )
 
-            themeOptions.forEach { (theme, label) ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(8.dp))
-                        .selectable(
-                            selected = (currentTheme == theme),
-                            onClick = { onThemeSelected(theme) },
-                            role = Role.RadioButton
+            Text(
+                text = "حالت نمایش برنامه",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                themeOptions.forEachIndexed { index, (theme, label) ->
+                    val selected = currentTheme == theme
+                    SegmentedButton(
+                        selected = selected,
+                        onClick = { onThemeSelected(theme) },
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = themeOptions.size),
+                        icon = {}
+                    ) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
-                        .padding(horizontal = 4.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = (currentTheme == theme),
-                        onClick = null
-                    )
-                    Text(
-                        text = label,
-                        fontSize = 14.sp,
-                        fontWeight = if (currentTheme == theme) FontWeight.SemiBold else FontWeight.Normal,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // AMOLED Switch Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .semantics(mergeDescendants = true) {}
-                    .clickable(role = Role.Switch) { onAmoledToggled(!isAmoled) }
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "مشکی خالص برای نمایشگرهای AMOLED",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = if (currentTheme == AppTheme.LIGHT)
-                            "در حالت روشن غیرفعال است؛ در زمان تاریک بودن سیستم یا برنامه اعمال می‌شود."
-                        else
-                            "پس‌زمینه مشکی خالص (#000000) برای خاموش شدن پیکسل‌ها و کاهش مصرف باتری.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                Switch(
-                    checked = isAmoled,
-                    onCheckedChange = null
-                )
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Live Launcher Icon Switch Row
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .semantics(mergeDescendants = true) {}
-                    .clickable(role = Role.Switch) {
-                        onLiveIconToggled(!isLiveIconEnabled)
                     }
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "آیکون زنده تقویم در صفحه اصلی (Launcher Live Icon)",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "نمایش روز جاری خورشیدی به عنوان آیکون برنامه در صفحه برنامه‌های گوشی شما.",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                 }
-
-                Switch(
-                    checked = isLiveIconEnabled,
-                    onCheckedChange = null
-                )
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            FarsiSwitchRow(
+                title = "مشکی خالص برای نمایشگرهای AMOLED",
+                subtitle = if (currentTheme == AppTheme.LIGHT) {
+                    "در حالت روشن غیرفعال است؛ در زمان تاریک بودن سیستم یا برنامه اعمال می‌شود."
+                } else {
+                    "پس‌زمینه مشکی خالص (#000000) برای خاموش شدن پیکسل‌ها و کاهش مصرف باتری."
+                },
+                checked = isAmoled,
+                onCheckedChange = onAmoledToggled
+            )
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            FarsiSwitchRow(
+                title = "آیکون زنده تقویم در صفحه اصلی (Launcher Live Icon)",
+                subtitle = "نمایش روز جاری خورشیدی به عنوان آیکون برنامه در صفحه برنامه‌های گوشی شما.",
+                checked = isLiveIconEnabled,
+                onCheckedChange = onLiveIconToggled
+            )
         }
     }
 }

@@ -4,6 +4,7 @@ import com.soh3il.core.jalali.JalaliDate
 import com.soh3il.core.model.RecurrenceRule
 import com.soh3il.core.model.RecurrenceType
 import com.soh3il.core.model.Reminder
+import com.soh3il.feature.calendar.components.computeEventCountdowns
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -90,5 +91,61 @@ class AgeCountdownTest {
         assertEquals("تولد دوست", state.nextReminderTitle)
         assertEquals(2L, state.nextReminderDays)
         assertEquals(JalaliDate(1404, 1, 12), state.nextReminderDate)
+    }
+
+    @Test
+    fun computeEventCountdowns_onlyIncludesEnabledSelectedRemindersSortedByDate() {
+        val today = JalaliDate(1404, 1, 10)
+        val unselected = Reminder(
+            id = 1,
+            title = "عدم انتخاب",
+            jalaliYear = 1404,
+            jalaliMonth = 1,
+            jalaliDay = 11,
+            hour = 9,
+            minute = 0,
+            isEnabled = true,
+            showCountdown = false
+        )
+        val disabledSelected = Reminder(
+            id = 2,
+            title = "غیرفعال",
+            jalaliYear = 1404,
+            jalaliMonth = 1,
+            jalaliDay = 12,
+            hour = 9,
+            minute = 0,
+            isEnabled = false,
+            showCountdown = true
+        )
+        val farEvent = Reminder(
+            id = 3,
+            title = "سفر تابستان",
+            jalaliYear = 1404,
+            jalaliMonth = 4,
+            jalaliDay = 1,
+            hour = 8,
+            minute = 0,
+            isEnabled = true,
+            showCountdown = true
+        )
+        val nearRecurring = Reminder(
+            id = 4,
+            title = "سالگرد",
+            jalaliYear = 1400,
+            jalaliMonth = 1,
+            jalaliDay = 14,
+            hour = 10,
+            minute = 0,
+            recurrence = RecurrenceRule(type = RecurrenceType.YEARLY_JALALI),
+            isEnabled = true,
+            showCountdown = true
+        )
+
+        val result = computeEventCountdowns(today, listOf(farEvent, unselected, disabledSelected, nearRecurring))
+        assertEquals(listOf("سالگرد", "سفر تابستان"), result.map { it.reminder.title })
+        assertEquals(4L, result[0].daysRemaining)
+        assertEquals(JalaliDate(1404, 1, 14), result[0].targetDate)
+        assertEquals(JalaliDate(1404, 4, 1), result[1].targetDate)
     }
 }
